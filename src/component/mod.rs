@@ -263,16 +263,16 @@ pub(crate) enum LinkMessage {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HashBindings<Action>(HashMap<SmallVec<[Key; 2]>, Action>);
+pub struct _HashBindings<Action>(HashMap<SmallVec<[Key; 2]>, Action>);
 
-impl<Message> HashBindings<Message> {
-    pub fn new(map: HashMap<SmallVec<[Key; 2]>, Message>) -> Self {
+impl<Message> _HashBindings<Message> {
+    pub fn _new(map: HashMap<SmallVec<[Key; 2]>, Message>) -> Self {
         Self(map)
     }
 }
 
-impl<Message: Clone> HashBindings<Message> {
-    pub fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Message> {
+impl<Message: Clone> _HashBindings<Message> {
+    pub fn _input_binding(&self, pressed: &[Key]) -> BindingMatch<Message> {
         for (binding, message) in self.0.iter() {
             let is_match = binding
                 .iter()

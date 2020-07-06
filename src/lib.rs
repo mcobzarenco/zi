@@ -4,15 +4,11 @@
 //! let you split the UI into independent, reusable pieces, and think about each
 //! piece in isolation.
 //!
-//! The `App` runtime will Zi is incremental. The runtime keeps and only calls
-//! `view()` on those UI components that have changed and have to be
-//! re-rendered. Lower level and independent of the components, the terminal
-//! backend will incrementally redraw only those parts of the terminal that have
-//! changed.
-//!
-//! The library is made up of four main components:
-//!
-//! - [`App`](struct.App.html): the runtime that will run your app
+//! The [`App`](struct.App.html) runtime keeps track of components as they are
+//! mounted, updated and eventually removed and only calls `view()` on those UI
+//! components that have changed and have to be re-rendered. Lower level and
+//! independent of the components, the terminal frontend will incrementally
+//! redraw only those parts of the screen that have changed.
 //!
 //! # A Basic Example
 //!

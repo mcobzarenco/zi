@@ -109,7 +109,7 @@ pub fn component<ComponentT: Component>(properties: ComponentT::Properties) -> L
 /// the number of items in the container.
 #[inline]
 pub fn component_with_key<ComponentT: Component>(
-    key: impl Into<ComponentKey>,
+    key: usize,
     properties: ComponentT::Properties,
 ) -> Layout {
     Layout(LayoutNode::Component(DynamicTemplate(Box::new(

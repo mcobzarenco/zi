@@ -2,6 +2,9 @@
 name = "zi"
 version = "0.1.0"
 authors = ["Marius Cobzarenco <marius@reinfer.io>"]
+description = "An incremental declarative library for building terminal user interfaces."
+readme = "README.md"
+homepage = "https://github.com/mcobzarenco/zi"
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
@@ -22,8 +25,7 @@ unicode-width = "0.1.7"
 [dependencies.crossterm]
 optional = true
 features = ["event-stream"]
-git = "https://github.com/crossterm-rs/crossterm.git"
-rev = "c5fc1a14931a2a11379b0c88024bdb40a5fecf77"
+version = "0.17.6"
 
 [dev-dependencies]
 colorous = "1.0.2"
