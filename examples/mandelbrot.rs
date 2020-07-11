@@ -58,8 +58,8 @@ impl Mandelbrot {
         self.fractal
             .par_extend((0..size.width).into_par_iter().flat_map(|x| {
                 (0..size.height).into_par_iter().map(move |y| {
-                    let xf = ((x as f64 / width) - 0.5) * scale + position.x;
-                    let yf = ((y as f64 / height) - 0.5) * scale + position.y;
+                    let xf = (x as f64 - width / 2.0) * scale + position.x;
+                    let yf = (y as f64 - height / 2.0) * scale + position.y;
                     let c = Complex::new(xf, yf);
                     let mut z = Complex::new(0.0, 0.0);
                     let target = 4.0;
@@ -122,7 +122,6 @@ impl Component for Mandelbrot {
     }
 
     fn resize(&mut self, frame: Rect) -> ShouldRender {
-        eprintln!("resize");
         self.frame = frame;
         self.compute_fractal(Size::new(self.frame.size.width, 2 * self.frame.size.height));
         ShouldRender::Yes
@@ -130,7 +129,7 @@ impl Component for Mandelbrot {
 
     #[inline]
     fn view(&self) -> Layout {
-        eprintln!("Range: {} -> {}", self.min, self.max);
+        // eprintln!("Range: {} -> {}", self.min, self.max);
         let mut grid = SquarePixelGrid::from_available(self.frame.size);
         for (x, y, conv) in self.fractal.iter() {
             // let g = colorous::CUBEHELIX.eval_continuous(1.0 - conv);
@@ -167,20 +166,20 @@ impl Component for Viewer {
         Self {
             theme: Default::default(),
             position: Position::new(-1.0, -1.0),
-            scale: 2.0,
+            scale: 0.01,
             link,
         }
     }
 
     fn update(&mut self, message: Self::Message) -> ShouldRender {
-        let step = self.scale / 20.0;
+        let step = self.scale * 2.0;
         match message {
             Message::MoveUp => self.position.y -= step,
             Message::MoveDown => self.position.y += step,
             Message::MoveLeft => self.position.x -= step,
             Message::MoveRight => self.position.x += step,
-            Message::ZoomIn => self.scale /= 1.1,
-            Message::ZoomOut => self.scale *= 1.1,
+            Message::ZoomIn => self.scale /= 1.05,
+            Message::ZoomOut => self.scale *= 1.05,
         }
         ShouldRender::Yes
     }
@@ -227,6 +226,7 @@ impl Component for Viewer {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
     let mut app = App::new(layout::component::<Viewer>(()));
     app.run_event_loop(frontend::default()?)
 }
