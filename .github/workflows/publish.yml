@@ -1,0 +1,31 @@
+name: Publish
+
+on:
+  push:
+    tags: v*
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build
+        run: ./scripts/build
+      - name: Run tests
+        run: ./scripts/check
+      - name: Install publish dependencies
+        run: ./scripts/publish-install
+      - name: Publish Crates
+        run: |
+          cargo login ${{ secrets.CRATES_IO_TOKEN }}
+          ./scripts/publish
