@@ -27,14 +27,12 @@ use crate::{
 /// The `App` application runtime, which runs the event loop and draws your
 /// components.
 pub struct App {
-    controller: InputController,
-    components: HashMap<ComponentId, MountedComponent>,
-    layout_cache: HashMap<ComponentId, Layout>,
-    focused_components: SmallVec<[ComponentId; 2]>,
-    tickable_components: SmallVec<[(ComponentId, DynamicMessage); 2]>,
-    link_receiver: UnboundedReceiver<LinkMessage>,
-    link_sender: UnboundedSender<LinkMessage>,
     root: Layout,
+    components: HashMap<ComponentId, MountedComponent>,
+    layouts: HashMap<ComponentId, Layout>,
+    subscriptions: ComponentSubscriptions,
+    controller: InputController,
+    link: LinkChannel,
 }
 
 impl App {
@@ -50,15 +48,12 @@ impl App {
     /// ));
     /// ```
     pub fn new(root: Layout) -> Self {
-        let (link_sender, link_receiver) = mpsc::unbounded_channel();
         Self {
-            controller: InputController::new(),
             components: HashMap::new(),
-            layout_cache: HashMap::new(),
-            focused_components: SmallVec::new(),
-            tickable_components: SmallVec::new(),
-            link_receiver,
-            link_sender,
+            layouts: HashMap::new(),
+            subscriptions: ComponentSubscriptions::new(),
+            controller: InputController::new(),
+            link: LinkChannel::new(),
             root,
         }
     }
@@ -102,7 +97,7 @@ impl App {
                     }
 
                     let frame = Rect::new(Position::new(0, 0), screen.size());
-                    let statistics = self.draw(&mut screen, frame);
+                    let statistics = self.draw(&mut screen, frame, num_frame);
                     let drawn_time = now.elapsed();
 
                     // Present
@@ -110,12 +105,13 @@ impl App {
                     let num_bytes_presented = frontend.present(&screen)?;
 
                     log::debug!(
-                        "Frame {} drawn in {:.2}ms, presented {} bytes in {:.2}ms: {}",
+                        "Frame {}: {} comps [{}] draw {:.1}ms pres {:.1}ms diff {}b",
                         num_frame,
-                        drawn_time.as_secs_f64() * 1000.0,
-                        num_bytes_presented,
-                        now.elapsed().as_secs_f64() * 1000.0,
+                        self.components.len(),
                         statistics,
+                        drawn_time.as_secs_f64() * 1000.0,
+                        now.elapsed().as_secs_f64() * 1000.0,
+                        num_bytes_presented,
                     );
                     last_drawn = Instant::now();
                     num_frame += 1;
@@ -133,23 +129,20 @@ impl App {
     }
 
     #[inline]
-    fn draw(&mut self, screen: &mut Canvas, frame: Rect) -> DrawStatistics {
-        let mut statistics = DrawStatistics::default();
-
-        self.focused_components.clear();
-        self.tickable_components.clear();
-
+    fn draw(&mut self, screen: &mut Canvas, frame: Rect, generation: Generation) -> DrawStatistics {
         let Self {
             ref mut components,
-            ref mut layout_cache,
-            ref mut focused_components,
-            ref mut tickable_components,
-            ref link_sender,
+            ref mut layouts,
+            ref mut subscriptions,
+            ref link,
             ..
         } = *self;
+
+        subscriptions.clear();
+
         let mut first = true;
         let mut pending = Vec::new();
-
+        let mut statistics = DrawStatistics::default();
         loop {
             let (layout, frame2, position_hash, parent_changed) = if first {
                 first = false;
@@ -158,13 +151,14 @@ impl App {
                 let component = components
                     .get_mut(&component_id)
                     .expect("Layout is cached only for mounted components");
-                let layout = layout_cache
+                let layout = layouts
                     .entry(component_id)
                     .or_insert_with(|| component.view());
                 let changed = component.should_render;
                 if changed {
                     *layout = component.view()
                 }
+                component.set_generation(generation);
                 (layout, frame, position_hash, changed)
             } else {
                 break;
@@ -178,17 +172,16 @@ impl App {
                           position_hash,
                           template,
                       }| {
-                    statistics.total += 1;
-
                     let component_id = template.generate_id(position_hash);
                     let mut new_component = false;
                     let component = components.entry(component_id).or_insert_with(|| {
                         new_component = true;
-                        let renderable = template.create(component_id, frame, link_sender.clone());
+                        let renderable = template.create(component_id, frame, link.sender.clone());
                         MountedComponent {
                             renderable,
                             frame,
                             should_render: ShouldRender::Yes.into(),
+                            generation,
                         }
                     });
 
@@ -210,16 +203,20 @@ impl App {
                     }
 
                     if component.has_focus() {
-                        focused_components.push(component_id);
+                        subscriptions.add_focused(component_id);
                     }
 
                     if let Some(message) = component.tick() {
-                        tickable_components.push((component_id, message));
+                        subscriptions.add_tickable(component_id, message);
                     }
 
-                    // eprintln!(
+                    // log::debug!(
                     //     "should_render={} new={} parent_changed={} [{} at {}]",
-                    //     component.should_render, new_component, parent_changed, component_id, frame,
+                    //     component.should_render,
+                    //     new_component,
+                    //     parent_changed,
+                    //     component_id,
+                    //     frame,
                     // );
 
                     pending.push((component_id, frame, position_hash));
@@ -229,6 +226,24 @@ impl App {
                 },
             );
         }
+
+        // Drop components that are not part of the current layout tree, i.e. do
+        // not appear on the screen.
+        components.retain(
+            |component_id,
+             &mut MountedComponent {
+                 generation: component_generation,
+                 ..
+             }| {
+                if component_generation < generation {
+                    statistics.deleted += 1;
+                    layouts.remove(component_id);
+                    false
+                } else {
+                    true
+                }
+            },
+        );
 
         statistics
     }
@@ -253,7 +268,7 @@ impl App {
                 } else if poll_state.dirty() {
                     REDRAW_LATENCY - since_last_drawn
                 } else {
-                    Duration::from_millis(if self.tickable_components.is_empty() {
+                    Duration::from_millis(if self.subscriptions.tickable.is_empty() {
                         240
                     } else {
                         60
@@ -262,7 +277,7 @@ impl App {
             };
             (runtime.block_on(async {
                 tokio::select! {
-                    link_message = self.link_receiver.recv() => {
+                    link_message = self.link.receiver.recv() => {
                         poll_state = self.handle_link_message(
                             frontend,
                             link_message.expect("At least one sender exists."),
@@ -280,12 +295,16 @@ impl App {
                         Ok(())
                     }
                     _ = tokio::time::delay_for(timeout_duration) => {
-                        for (component_id, dyn_message) in self.tickable_components.drain(..) {
+                        for TickSubscription {
+                            component_id,
+                            message,
+                        } in self.subscriptions.tickable.drain(..)
+                        {
                             poll_state = PollState::Dirty(None);
                             match self.components.get_mut(&component_id) {
                                 Some(component) => {
-                                    component.update(dyn_message);
-                                },
+                                    component.update(message);
+                                }
                                 None => {
                                     log::debug!(
                                         "Received message for nonexistent component (id: {}).",
@@ -367,7 +386,7 @@ impl App {
     fn handle_key(&mut self, key: Key) -> Result<()> {
         let Self {
             ref mut components,
-            ref focused_components,
+            ref subscriptions,
             ref mut controller,
             ..
         } = *self;
@@ -375,7 +394,7 @@ impl App {
         let mut changed_focus = false;
 
         controller.push(key);
-        for component_id in focused_components.iter() {
+        for component_id in subscriptions.focused.iter() {
             let focused_component = components
                 .get_mut(component_id)
                 .expect("A focused component should be mounted.");
@@ -410,6 +429,54 @@ impl App {
     }
 }
 
+struct LinkChannel {
+    sender: UnboundedSender<LinkMessage>,
+    receiver: UnboundedReceiver<LinkMessage>,
+}
+
+impl LinkChannel {
+    fn new() -> Self {
+        let (sender, receiver) = mpsc::unbounded_channel();
+        Self { sender, receiver }
+    }
+}
+
+struct ComponentSubscriptions {
+    focused: SmallVec<[ComponentId; 2]>,
+    tickable: SmallVec<[TickSubscription; 2]>,
+}
+
+impl ComponentSubscriptions {
+    fn new() -> Self {
+        Self {
+            focused: SmallVec::new(),
+            tickable: SmallVec::new(),
+        }
+    }
+
+    #[inline]
+    fn clear(&mut self) {
+        self.focused.clear();
+        self.tickable.clear();
+    }
+
+    fn add_focused(&mut self, component_id: ComponentId) {
+        self.focused.push(component_id);
+    }
+
+    fn add_tickable(&mut self, component_id: ComponentId, message: DynamicMessage) {
+        self.tickable.push(TickSubscription {
+            component_id,
+            message,
+        });
+    }
+}
+
+struct TickSubscription {
+    component_id: ComponentId,
+    message: DynamicMessage,
+}
+
 #[derive(Debug, PartialEq)]
 enum PollState {
     Clean,
@@ -437,10 +504,13 @@ impl PollState {
     }
 }
 
+type Generation = usize;
+
 struct MountedComponent {
     renderable: Box<dyn Renderable>,
-    should_render: bool,
     frame: Rect,
+    generation: Generation,
+    should_render: bool,
 }
 
 impl MountedComponent {
@@ -482,6 +552,11 @@ impl MountedComponent {
     #[inline]
     fn tick(&self) -> Option<DynamicMessage> {
         self.renderable.tick()
+    }
+
+    #[inline]
+    fn set_generation(&mut self, generation: Generation) {
+        self.generation = generation;
     }
 }
 
@@ -525,7 +600,6 @@ const SUSTAINED_IO_REDRAW_LATENCY: Duration = Duration::from_millis(100);
 
 #[derive(Default)]
 struct DrawStatistics {
-    total: usize,
     new: usize,
     changed: usize,
     deleted: usize,
@@ -536,8 +610,8 @@ impl std::fmt::Display for DrawStatistics {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             formatter,
-            "{} components: {} new {} upd {} del {} nop",
-            self.total, self.new, self.changed, self.deleted, self.nop
+            "{} new {} upd {} del {} nop",
+            self.new, self.changed, self.deleted, self.nop
         )
     }
 }
