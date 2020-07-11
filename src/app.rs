@@ -186,10 +186,8 @@ impl App {
                     });
 
                     if !new_component {
-                        let mut changed = false;
-                        if parent_changed {
-                            changed = component.change(template.dynamic_properties());
-                        }
+                        let mut changed =
+                            parent_changed && component.change(template.dynamic_properties());
                         if frame != component.frame {
                             changed = component.resize(frame) || changed;
                         }

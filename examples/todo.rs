@@ -216,10 +216,10 @@ impl Default for Theme {
         const BRIGHT_BLUE: Colour = Colour::rgb(131, 165, 152);
 
         Self {
-            unchecked: Style::normal(DARK0_SOFT.into(), LIGHT2.into()),
-            checked: Style::normal(DARK0_SOFT.into(), GRAY_245.into()),
-            focused: Style::normal(BRIGHT_BLUE.into(), DARK0_SOFT.into()),
-            cursor: Style::normal(BRIGHT_BLUE.into(), DARK0_SOFT.into()),
+            unchecked: Style::normal(DARK0_SOFT, LIGHT2),
+            checked: Style::normal(DARK0_SOFT, GRAY_245),
+            focused: Style::normal(BRIGHT_BLUE, DARK0_SOFT),
+            cursor: Style::normal(BRIGHT_BLUE, DARK0_SOFT),
         }
     }
 }
@@ -276,7 +276,6 @@ impl Component for TodoMvc {
             link,
             theme: Default::default(),
             todos: (0..1)
-                .into_iter()
                 .map(|index| TodoItem {
                     id: index,
                     checked: false,
@@ -425,7 +424,7 @@ impl Component for TodoMvc {
                 },
                 item_size: 1,
                 focused: true,
-                on_change: Some(link.callback(|index| Message::FocusItem(index))),
+                on_change: Some(link.callback(Message::FocusItem)),
             },
         ));
 
@@ -456,18 +455,18 @@ impl Component for TodoMvc {
     fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
         let mut transition = BindingTransition::Clear;
         let message = match pressed {
-            &[Key::Esc] | &[Key::Alt('\u{1b}')] => Some(Message::Edit),
-            &[Key::Char('\n')] => Some(Message::AddItem),
-            &[Key::Alt('p')] => Some(Message::MoveItemUp),
-            &[Key::Alt('n')] => Some(Message::MoveItemDown),
-            &[Key::Ctrl('k')] => Some(Message::DeleteItem),
-            &[Key::Ctrl('x'), Key::Ctrl('k')] => Some(Message::DeleteDone),
-            &[Key::Char('\t')] => Some(Message::ToggleDone),
-            &[Key::Ctrl('x'), Key::Ctrl('c')] => {
+            [Key::Esc] | [Key::Alt('\u{1b}')] => Some(Message::Edit),
+            [Key::Char('\n')] => Some(Message::AddItem),
+            [Key::Alt('p')] => Some(Message::MoveItemUp),
+            [Key::Alt('n')] => Some(Message::MoveItemDown),
+            [Key::Ctrl('k')] => Some(Message::DeleteItem),
+            [Key::Ctrl('x'), Key::Ctrl('k')] => Some(Message::DeleteDone),
+            [Key::Char('\t')] => Some(Message::ToggleDone),
+            [Key::Ctrl('x'), Key::Ctrl('c')] => {
                 self.link.exit();
                 None
             }
-            &[Key::Ctrl('x')] => {
+            [Key::Ctrl('x')] => {
                 transition = BindingTransition::Continue;
                 None
             }
@@ -499,6 +498,6 @@ const LOGO: &str = r#"
 
 fn main() -> Result<()> {
     env_logger::init();
-    let mut app = App::new(layout::component::<TodoMvc>(Default::default()));
+    let mut app = App::new(layout::component::<TodoMvc>(()));
     app.run_event_loop(frontend::default()?)
 }

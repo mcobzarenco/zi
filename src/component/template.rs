@@ -60,7 +60,7 @@ impl ComponentId {
 
 impl std::fmt::Display for ComponentId {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "{} / {:x}", self.type_name, self.id >> 32)
+        write!(formatter, "{} / {:x}", self.type_name(), self.id >> 32)
     }
 }
 

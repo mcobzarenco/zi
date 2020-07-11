@@ -23,9 +23,7 @@ jobs:
         run: ./scripts/build
       - name: Run tests
         run: ./scripts/check
-      - name: Install publish dependencies
-        run: ./scripts/publish-install
       - name: Publish Crates
         run: |
           cargo login ${{ secrets.CRATES_IO_TOKEN }}
-          ./scripts/publish
+          cargo publish

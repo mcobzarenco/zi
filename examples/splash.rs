@@ -149,11 +149,11 @@ impl Component for SplashGrid {
     fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
         let mut transition = BindingTransition::Clear;
         let message = match pressed {
-            &[Key::Ctrl('x'), Key::Ctrl('c')] => {
+            [Key::Ctrl('x'), Key::Ctrl('c')] => {
                 self.link.exit();
                 None
             }
-            &[Key::Ctrl('x')] => {
+            [Key::Ctrl('x')] => {
                 transition = BindingTransition::Continue;
                 None
             }
@@ -180,6 +180,6 @@ const SPLASH_TAGLINE: &str = "a splash screen for the terminal";
 const SPLASH_CREDITS: &str = "C-x C-c to quit";
 
 fn main() -> Result<()> {
-    let mut app = App::new(layout::component::<SplashGrid>(Default::default()));
+    let mut app = App::new(layout::component::<SplashGrid>(()));
     app.run_event_loop(frontend::crossterm::incremental()?)
 }

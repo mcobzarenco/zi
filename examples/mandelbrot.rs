@@ -202,17 +202,17 @@ impl Component for Viewer {
     fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
         let mut transition = BindingTransition::Clear;
         let message = match pressed {
-            &[Key::Char('w')] => Some(Message::MoveUp),
-            &[Key::Char('d')] => Some(Message::MoveRight),
-            &[Key::Char('s')] => Some(Message::MoveDown),
-            &[Key::Char('a')] => Some(Message::MoveLeft),
-            &[Key::Char('=')] => Some(Message::ZoomIn),
-            &[Key::Char('-')] => Some(Message::ZoomOut),
-            &[Key::Ctrl('x'), Key::Ctrl('c')] => {
+            [Key::Char('w')] => Some(Message::MoveUp),
+            [Key::Char('d')] => Some(Message::MoveRight),
+            [Key::Char('s')] => Some(Message::MoveDown),
+            [Key::Char('a')] => Some(Message::MoveLeft),
+            [Key::Char('=')] => Some(Message::ZoomIn),
+            [Key::Char('-')] => Some(Message::ZoomOut),
+            [Key::Ctrl('x'), Key::Ctrl('c')] => {
                 self.link.exit();
                 None
             }
-            &[Key::Ctrl('x')] => {
+            [Key::Ctrl('x')] => {
                 transition = BindingTransition::Continue;
                 None
             }
