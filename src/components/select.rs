@@ -37,12 +37,12 @@ pub struct Select {
 impl Select {
     fn ensure_selected_item_in_view(&mut self) {
         let selected = self.properties.selected;
-        let num_items = self.frame.size.height / self.properties.item_size + 1;
+        let num_visible_items = self.frame.size.height / self.properties.item_size;
 
         // Compute offset
         self.offset = cmp::min(self.offset, selected);
-        if selected - self.offset >= num_items.saturating_sub(1) {
-            self.offset = selected + 1 - num_items;
+        if selected - self.offset >= num_visible_items.saturating_sub(1) {
+            self.offset = selected + 1 - num_visible_items;
         } else if selected < self.offset {
             self.offset = selected;
         }
@@ -61,6 +61,22 @@ impl Component for Select {
         };
         select.ensure_selected_item_in_view();
         select
+    }
+
+    fn change(&mut self, properties: Self::Properties) -> ShouldRender {
+        if self.properties != properties {
+            self.properties = properties;
+            self.ensure_selected_item_in_view();
+            ShouldRender::Yes
+        } else {
+            ShouldRender::No
+        }
+    }
+
+    fn resize(&mut self, frame: Rect) -> ShouldRender {
+        self.frame = frame;
+        self.ensure_selected_item_in_view();
+        ShouldRender::Yes
     }
 
     fn update(&mut self, message: Self::Message) -> ShouldRender {
@@ -93,45 +109,24 @@ impl Component for Select {
         ShouldRender::No
     }
 
-    fn change(&mut self, properties: Self::Properties) -> ShouldRender {
-        if self.properties != properties {
-            self.properties = properties;
-            self.ensure_selected_item_in_view();
-            ShouldRender::Yes
-        } else {
-            ShouldRender::No
-        }
-    }
-
-    fn resize(&mut self, frame: Rect) -> ShouldRender {
-        self.frame = frame;
-        self.ensure_selected_item_in_view();
-        ShouldRender::Yes
-    }
-
     fn view(&self) -> Layout {
         let num_visible_items = cmp::min(
             self.properties.num_items.saturating_sub(self.offset),
-            self.frame.size.height / self.properties.item_size + 1,
+            self.frame.size.height / self.properties.item_size,
         );
         let items = (self.offset..)
             .take(num_visible_items)
             .map(|index| self.properties.item_at.emit(index));
 
-        // "Filler" component for the unused space
-        let filler = iter::once(layout::auto(layout::component::<Text>(
-            TextProperties::new().style(self.properties.background),
-        )));
-        layout::container_iter(self.properties.direction, items.chain(filler))
-
-        // if num_visible_items == 0 {
-        //     let filler = iter::once(layout::auto(layout::component::<Text>(
-        //         TextProperties::new().style(self.properties.background),
-        //     )));
-        //     layout::container_iter(self.properties.direction, items.chain(filler))
-        // } else {
-        //     layout::container_iter(self.properties.direction, items)
-        // }
+        if self.properties.item_size * num_visible_items < self.frame.size.height {
+            // "Filler" component for the unused space
+            let filler = iter::once(layout::auto(layout::component::<Text>(
+                TextProperties::new().style(self.properties.background),
+            )));
+            layout::container_iter(self.properties.direction, items.chain(filler))
+        } else {
+            layout::container_iter(self.properties.direction, items)
+        }
     }
 
     fn has_focus(&self) -> bool {
@@ -141,13 +136,13 @@ impl Component for Select {
     fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
         let mut transition = BindingTransition::Clear;
         let message = match pressed {
-            &[Key::Ctrl('n')] | &[Key::Down] => Some(Message::NextItem),
-            &[Key::Ctrl('p')] | &[Key::Up] => Some(Message::PreviousItem),
-            &[Key::Alt('<')] => Some(Message::FirstItem),
-            &[Key::Alt('>')] => Some(Message::LastItem),
-            &[Key::Ctrl('v')] | &[Key::PageDown] => Some(Message::NextPage),
-            &[Key::Alt('v')] | &[Key::PageUp] => Some(Message::PreviousPage),
-            &[Key::Ctrl('x')] => {
+            [Key::Ctrl('n')] | [Key::Down] => Some(Message::NextItem),
+            [Key::Ctrl('p')] | [Key::Up] => Some(Message::PreviousItem),
+            [Key::Alt('<')] => Some(Message::FirstItem),
+            [Key::Alt('>')] => Some(Message::LastItem),
+            [Key::Ctrl('v')] | [Key::PageDown] => Some(Message::NextPage),
+            [Key::Alt('v')] | [Key::PageUp] => Some(Message::PreviousPage),
+            [Key::Ctrl('x')] => {
                 transition = BindingTransition::Continue;
                 None
             }
