@@ -2,5 +2,5 @@
 
 set -ex
 
-cargo check --locked --all-targets
-cargo build --locked --all-targets
+cargo check --all-targets
+cargo build --all-targets
