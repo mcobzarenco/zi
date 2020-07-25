@@ -19,7 +19,7 @@ smallvec = "1.4.0"
 thiserror = "1.0.20"
 tokio = { version = "0.2.21", features = ["io-util", "macros", "rt-core", "sync", "time"] }
 unicode-segmentation = "1.6.0"
-unicode-width = "0.1.7"
+unicode-width = "0.1.8"
 
 # Optional dependencies
 [dependencies.crossterm]

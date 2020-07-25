@@ -275,14 +275,11 @@ impl Component for TodoMvc {
         Self {
             link,
             theme: Default::default(),
-            todos: (0..1)
+            todos: (0..10)
                 .map(|index| TodoItem {
                     id: index,
                     checked: false,
-                    content: format!(
-                        "    豈 更 車 賈 滑 串 句 All work and no play makes Jack a dull boy {}\n",
-                        index
-                    ),
+                    content: "All work and no play makes Jack a dull boy.\n".into(),
                 })
                 .collect::<Vec<_>>()
                 .into(),
