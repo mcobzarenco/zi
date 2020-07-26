@@ -4,7 +4,7 @@
 //! via their child components and their descendants. At the bottom of the
 //! component hierarchy, low level components would draw directly on a canvas.
 
-pub use canvas::{Background, Canvas, Colour, Foreground, SquarePixelGrid, Style};
+pub use canvas::{Background, Canvas, Colour, Foreground, GraphemeCluster, SquarePixelGrid, Style};
 pub use input::Key;
 
 /// A 2D rectangle with usize coordinates. Re-exported from
