@@ -1,6 +1,6 @@
 [package]
 name = "zi"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Marius Cobzarenco <marius@reinfer.io>"]
 description = "An incremental declarative library for building terminal user interfaces."
 readme = "README.md"
@@ -9,15 +9,15 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-euclid = "0.20.13"
+euclid = "0.22.1"
 futures = "0.3.5"
-log = "0.4.8"
+log = "0.4.11"
 maplit = "1.0.2"
 ropey = "1.2.0"
 smallstr = "0.2.0"
-smallvec = "1.4.0"
+smallvec = "1.4.2"
 thiserror = "1.0.20"
-tokio = { version = "0.2.21", features = ["io-util", "macros", "rt-core", "sync", "time"] }
+tokio = { version = "0.2.22", features = ["io-util", "macros", "rt-core", "sync", "time"] }
 unicode-segmentation = "1.6.0"
 unicode-width = "0.1.8"
 
@@ -25,14 +25,14 @@ unicode-width = "0.1.8"
 [dependencies.crossterm]
 optional = true
 features = ["event-stream"]
-version = "0.17.6"
+version = "0.17.7"
 
 [dev-dependencies]
-colorous = "1.0.2"
-criterion = "0.3.2"
+colorous = "1.0.3"
+criterion = "0.3.3"
 env_logger = "0.7.1"
-num-complex = "0.2.4"
-rayon = "1.3.0"
+num-complex = "0.3.0"
+rayon = "1.4.0"
 
 [features]
 default = ["frontend-crossterm"]

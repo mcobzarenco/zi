@@ -13,6 +13,44 @@ use super::{
 };
 use crate::terminal::{Canvas, Position, Rect, Size};
 
+pub trait ComponentExt: Component {
+    fn with(properties: Self::Properties) -> Layout {
+        Layout(LayoutNode::Component(DynamicTemplate(Box::new(
+            ComponentDef::<Self>::new(None, properties),
+        ))))
+    }
+
+    fn with_key(key: impl Into<ComponentKey>, properties: Self::Properties) -> Layout {
+        Layout(LayoutNode::Component(DynamicTemplate(Box::new(
+            ComponentDef::<Self>::new(Some(key.into()), properties),
+        ))))
+    }
+
+    fn item_with(flex: FlexBasis, properties: Self::Properties) -> Item {
+        Item {
+            flex,
+            node: Layout(LayoutNode::Component(DynamicTemplate(Box::new(
+                ComponentDef::<Self>::new(None, properties),
+            )))),
+        }
+    }
+
+    fn item_with_key(
+        flex: FlexBasis,
+        key: impl Into<ComponentKey>,
+        properties: Self::Properties,
+    ) -> Item {
+        Item {
+            flex,
+            node: Layout(LayoutNode::Component(DynamicTemplate(Box::new(
+                ComponentDef::<Self>::new(Some(key.into()), properties),
+            )))),
+        }
+    }
+}
+
+impl<T: Component> ComponentExt for T {}
+
 /// Creates a container with vertical layout. Child components are laid out from top to
 /// bottom. Pass in the children as an array of items.
 #[inline]

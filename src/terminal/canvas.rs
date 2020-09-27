@@ -375,7 +375,11 @@ mod tests {
             std::mem::size_of::<Option<Textel>>()
         );
         eprintln!(
-            "std::mem::size_of::<GraphemeCluster>>() == {}",
+            "std::mem::size_of::<GraphemeCluster>() == {}",
+            std::mem::size_of::<GraphemeCluster>()
+        );
+        eprintln!(
+            "std::mem::size_of::<Option<GraphemeCluster>>() == {}",
             std::mem::size_of::<Option<GraphemeCluster>>()
         );
     }

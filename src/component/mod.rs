@@ -3,7 +3,7 @@
 pub mod layout;
 pub(crate) mod template;
 
-pub use self::layout::Layout;
+pub use self::layout::{ComponentExt, Layout};
 
 use smallvec::SmallVec;
 use std::{

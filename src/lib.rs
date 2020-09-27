@@ -124,7 +124,8 @@ pub mod terminal;
 pub use app::App;
 pub use component::{
     layout::{
-        self, auto, column, component, container, fixed, row, FlexBasis, FlexDirection, Item,
+        self, auto, column, component, container, fixed, row, ComponentExt, ComponentKey,
+        FlexBasis, FlexDirection, Item,
     },
     BindingMatch, BindingTransition, Callback, Component, ComponentLink, Layout, ShouldRender,
 };
@@ -135,7 +136,8 @@ pub mod prelude {
     //! The Zi prelude.
     pub use super::App;
     pub use super::{
-        layout, BindingMatch, BindingTransition, Component, ComponentLink, Layout, ShouldRender,
+        layout, BindingMatch, BindingTransition, Component, ComponentExt, ComponentLink, Layout,
+        ShouldRender,
     };
     pub use super::{Background, Canvas, Colour, Foreground, Key, Position, Rect, Size, Style};
 }

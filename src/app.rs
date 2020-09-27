@@ -87,13 +87,18 @@ impl App {
 
         loop {
             match poll_state {
-                PollState::Dirty(new_size) => {
-                    let now = Instant::now();
-
+                PollState::Dirty(maybe_new_size) => {
                     // Draw
-                    if let Some(screen_size) = new_size {
-                        log::debug!("Screen resized {} -> {}", screen.size(), screen_size);
-                        screen.resize(screen_size);
+                    let now = Instant::now();
+                    if let Some(new_size) = maybe_new_size {
+                        log::debug!(
+                            "Screen resized {}x{} -> {}x{}",
+                            screen.size().width,
+                            screen.size().height,
+                            new_size.width,
+                            new_size.height
+                        );
+                        screen.resize(new_size);
                     }
 
                     let frame = Rect::new(Position::new(0, 0), screen.size());
@@ -103,6 +108,7 @@ impl App {
                     // Present
                     let now = Instant::now();
                     let num_bytes_presented = frontend.present(&screen)?;
+                    let presented_time = now.elapsed();
 
                     log::debug!(
                         "Frame {}: {} comps [{}] draw {:.1}ms pres {:.1}ms diff {}b",
@@ -110,7 +116,7 @@ impl App {
                         self.components.len(),
                         statistics,
                         drawn_time.as_secs_f64() * 1000.0,
-                        now.elapsed().as_secs_f64() * 1000.0,
+                        presented_time.as_secs_f64() * 1000.0,
                         num_bytes_presented,
                     );
                     last_drawn = Instant::now();
