@@ -7,7 +7,12 @@ pub use self::layout::{ComponentExt, Layout};
 
 use smallvec::SmallVec;
 use std::{
-    any::TypeId, cmp::Ordering, collections::hash_map::HashMap, marker::PhantomData, rc::Rc,
+    any::{self, TypeId},
+    cmp::Ordering,
+    collections::hash_map::HashMap,
+    fmt,
+    marker::PhantomData,
+    rc::Rc,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -107,10 +112,39 @@ impl<InputT, OutputT> Clone for Callback<InputT, OutputT> {
     }
 }
 
+impl<InputT, OutputT> fmt::Debug for Callback<InputT, OutputT> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "Callback({} -> {} @ {:?})",
+            any::type_name::<InputT>(),
+            any::type_name::<OutputT>(),
+            Rc::as_ptr(&self.0)
+        )
+    }
+}
+
 impl<InputT, OutputT> PartialEq for Callback<InputT, OutputT> {
-    fn eq(&self, _other: &Self) -> bool {
-        false
-        // Rc::ptr_eq(&self.0, &other.0)
+    fn eq(&self, other: &Self) -> bool {
+        // `Callback` is a fat pointer: vtable address + data address. We're
+        // only comparing the pointers to the data portion for equality.
+        //
+        // This could fail if some of your objects can have the same address but
+        // different concrete types, for example if one is stored in a field of
+        // another, or if they are different zero-sized types.
+        //
+        // Comparing vtable addresses doesn't work either as "vtable addresses
+        // are not guaranteed to be unique and could vary between different code
+        // generation units. Furthermore vtables for different types could have
+        // the same address after being merged together".
+        //
+        // References
+        //  - https://rust-lang.github.io/rust-clippy/master/index.html#vtable_address_comparisons
+        //  - https://users.rust-lang.org/t/rc-dyn-trait-ptr-equality
+        std::ptr::eq(
+            self.0.as_ref() as *const _ as *const (),
+            other.0.as_ref() as *const _ as *const (),
+        )
     }
 }
 
