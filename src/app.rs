@@ -79,10 +79,7 @@ impl App {
         let mut screen = Canvas::new(frontend.size()?);
         let mut poll_state = PollState::Dirty(None);
         let mut last_drawn = Instant::now() - REDRAW_LATENCY;
-        let mut runtime = RuntimeBuilder::new()
-            .basic_scheduler()
-            .enable_all()
-            .build()?;
+        let mut runtime = RuntimeBuilder::new_current_thread().enable_all().build()?;
         let mut num_frame = 0;
 
         loop {
@@ -298,7 +295,7 @@ impl App {
                                 || poll_state.resized());
                         Ok(())
                     }
-                    _ = tokio::time::delay_for(timeout_duration) => {
+                    _ = tokio::time::sleep(timeout_duration) => {
                         for TickSubscription {
                             component_id,
                             message,
