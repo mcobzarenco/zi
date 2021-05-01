@@ -1,6 +1,6 @@
 [package]
 name = "zi"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Marius Cobzarenco <marius@reinfer.io>"]
 description = "An incremental declarative library for building terminal user interfaces."
 readme = "README.md"
@@ -9,14 +9,14 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-euclid = "0.22.1"
-futures = "0.3.12"
+euclid = "0.22.3"
+futures = "0.3.14"
 log = "0.4.14"
 maplit = "1.0.2"
 ropey = "1.2.0"
 smallstr = "0.2.0"
 smallvec = "1.6.1"
-thiserror = "1.0.23"
+thiserror = "1.0.24"
 tokio = { version = "1.2.0", features = ["io-util", "macros", "rt", "sync", "time"] }
 unicode-segmentation = "1.7.1"
 unicode-width = "0.1.8"
