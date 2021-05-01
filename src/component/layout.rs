@@ -289,6 +289,60 @@ pub struct Container {
     direction: FlexDirection,
 }
 
+impl Container {
+    /// Creates a container with vertical layout. Child components are laid out from top to
+    /// bottom. Pass in the children as an array of items.
+    #[inline]
+    pub fn new(direction: FlexDirection) -> Self {
+        Self {
+            children: SmallVec::new(),
+            direction,
+        }
+    }
+
+    /// Creates a container with vertical layout. Child components are laid out from top to
+    /// bottom. Pass in the children as an array of items.
+    #[inline]
+    pub fn column() -> Self {
+        Self::new(FlexDirection::Column)
+    }
+
+    /// Creates a container with reversed vertical layout. Child components are laid
+    /// out from bottom to top. Pass in the children as an array of items.
+    #[inline]
+    pub fn column_reverse() -> Self {
+        Self::new(FlexDirection::ColumnReverse)
+    }
+
+    /// Creates a container with horizontal layout. Child components are laid out
+    /// from left to right. Pass in the children as an array of items.
+    #[inline]
+    pub fn row() -> Self {
+        Self::new(FlexDirection::Row)
+    }
+
+    /// Creates a container with reversed horizontal layout. Child components are
+    /// laid out from right to left. Pass in the children as an array of items.
+    #[inline]
+    pub fn row_reverse() -> Self {
+        Self::new(FlexDirection::RowReverse)
+    }
+
+    /// Creates a container with vertical layout. Child components are laid out from top to
+    /// bottom. Pass in the children as an array of items.
+    #[inline]
+    pub fn add(&mut self, item: Item) -> &mut Self {
+        self.children.push(item);
+        self
+    }
+}
+
+impl From<Container> for Layout {
+    fn from(container: Container) -> Self {
+        Layout(LayoutNode::Container(Box::new(container)))
+    }
+}
+
 /// An item inside a container.
 #[derive(Clone)]
 pub struct Item {

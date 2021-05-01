@@ -237,6 +237,16 @@ impl Style {
             underline: false,
         }
     }
+
+    #[inline]
+    pub const fn invert(self) -> Self {
+        Self {
+            background: self.foreground,
+            foreground: self.background,
+            bold: self.bold,
+            underline: self.underline,
+        }
+    }
 }
 
 impl Default for Style {

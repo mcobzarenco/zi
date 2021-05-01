@@ -42,18 +42,16 @@ impl Component for Counter {
 
     // Returns the current visual layout of the component.
     fn view(&self) -> Layout {
-        zi::component::<Border>(
-            BorderProperties::new(layout::component::<Text>(
-                TextProperties::new()
-                    .align(TextAlign::Centre)
-                    .style(STYLE)
-                    .content(format!(
-                        "\nCounter: {:>3}  [+ to increment | - to decrement | C-c to exit]",
-                        self.count
-                    )),
-            ))
-            .style(STYLE),
-        )
+        let text = Text::with(
+            TextProperties::new()
+                .align(TextAlign::Centre)
+                .style(STYLE)
+                .content(format!(
+                    "\nCounter: {:>3}  [+ to increment | - to decrement | C-c to exit]",
+                    self.count
+                )),
+        );
+        Border::with(BorderProperties::new(text).style(STYLE))
     }
 
     // Components handle messages in their `update` method and commonly use this
@@ -96,6 +94,6 @@ const FOREGROUND: Colour = Colour::rgb(213, 196, 161);
 const STYLE: Style = Style::bold(BACKGROUND, FOREGROUND);
 
 fn main() -> zi::Result<()> {
-    let mut app = App::new(layout::component::<Counter>(()));
+    let mut app = App::new(Counter::with(()));
     app.run_event_loop(zi::frontend::default()?)
 }
