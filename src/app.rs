@@ -487,21 +487,15 @@ enum PollState {
 
 impl PollState {
     fn dirty(&self) -> bool {
-        match *self {
-            Self::Dirty(_) => true,
-            _ => false,
-        }
+        matches!(*self, Self::Dirty(_))
     }
 
     fn resized(&self) -> bool {
-        match *self {
-            Self::Dirty(Some(_)) => true,
-            _ => false,
-        }
+        matches!(*self, Self::Dirty(Some(_)))
     }
 
     fn exit(&self) -> bool {
-        Self::Exit == *self
+        matches!(*self, Self::Exit)
     }
 }
 
