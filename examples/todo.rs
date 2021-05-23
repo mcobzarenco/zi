@@ -3,12 +3,13 @@ use std::{cmp, rc::Rc};
 use unicode_width::UnicodeWidthStr;
 
 use zi::{
+    backend,
     components::{
         input::{Cursor, Input, InputChange, InputProperties, InputStyle},
         select::{Select, SelectProperties},
         text::{Text, TextAlign, TextProperties},
     },
-    frontend, layout, App, BindingMatch, BindingTransition, Callback, Canvas, Colour, Component,
+    layout, App, BindingMatch, BindingTransition, Callback, Canvas, Colour, Component,
     ComponentExt, ComponentLink, FlexBasis, FlexDirection, Key, Layout, Rect, Result, ShouldRender,
     Style,
 };
@@ -496,5 +497,5 @@ const LOGO: &str = r#"
 fn main() -> Result<()> {
     env_logger::init();
     let mut app = App::new(TodoMvc::with(()));
-    app.run_event_loop(frontend::default()?)
+    app.run_event_loop(backend::default()?)
 }

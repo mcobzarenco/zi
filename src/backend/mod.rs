@@ -1,8 +1,8 @@
-//! This module contains the `Frontend` trait and provided implementations.
+//! This module contains the `Backend` trait and provided implementations.
 
-#[cfg(feature = "frontend-crossterm")]
+#[cfg(feature = "backend-crossterm")]
 pub mod crossterm;
-#[cfg(feature = "frontend-crossterm")]
+#[cfg(feature = "backend-crossterm")]
 pub use self::crossterm::Crossterm;
 
 pub(crate) mod painter;
@@ -15,10 +15,10 @@ use thiserror::Error;
 
 use crate::terminal::{Canvas, Key, Size};
 
-/// A trait implemented by frontends that draw a [`Canvas`](../terminal/struct.Canvas.html) to
+/// A trait implemented by backends that draw a [`Canvas`](../terminal/struct.Canvas.html) to
 /// an underlying device (e.g an ANSI terminal).
-pub trait Frontend {
-    /// Stream with frontend events.
+pub trait Backend {
+    /// Stream with backend events.
     type EventStream: Stream<Item = Result<Event>> + Unpin;
 
     /// Returns the size of the underlying terminal.
@@ -43,33 +43,33 @@ pub trait Frontend {
     /// Recreates the event stream and reinitialises the underlying terminal.
     ///
     /// This function is used to return execution to the application after running something
-    /// that needs exclusive access to the underlying frontend. It will only be called after a
+    /// that needs exclusive access to the underlying backend. It will only be called after a
     /// call to `suspend`.
     ///
     /// In addition to restarting the event stream, this function should perform any other
-    /// required initialisation of the frontend. For ANSI terminals, this typically hides the
+    /// required initialisation of the backend. For ANSI terminals, this typically hides the
     /// cursor and saves the current screen content (i.e. "alternative screen mode") in order
     /// to restore the previous terminal content on exit.
     fn resume(&mut self) -> Result<()>;
 }
 
-/// Alias for `Result` with a frontend error.
+/// Alias for `Result` with a backend error.
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Frontend event
+/// Backend event
 #[derive(Debug)]
 pub enum Event {
     Key(Key),
     Resize(Size),
 }
 
-/// Frontend error
+/// Backend error
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("{0}")]
-    UnknownFrontend(String),
+    UnknownBackend(String),
 
-    #[cfg(feature = "frontend-crossterm")]
+    #[cfg(feature = "backend-crossterm")]
     #[error(transparent)]
     Crossterm(#[from] crossterm::Error),
 
@@ -77,8 +77,8 @@ pub enum Error {
     Io(#[from] io::Error),
 }
 
-#[cfg(feature = "frontend-crossterm")]
+#[cfg(feature = "backend-crossterm")]
 pub fn default() -> Result<crossterm::Crossterm> {
-    //! Builds the default frontend.
+    //! Builds the default backend.
     crossterm::Crossterm::new()
 }

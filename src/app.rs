@@ -14,13 +14,13 @@ use tokio::{
 };
 
 use crate::{
+    backend::{Backend, Event},
     component::{
         layout::{LaidCanvas, LaidComponent, Layout},
         template::{ComponentId, DynamicMessage, DynamicProperties, Renderable, Template},
         BindingMatch, BindingTransition, LinkMessage, ShouldRender,
     },
     error::Result,
-    frontend::{Event, Frontend},
     terminal::{Canvas, Key, Position, Rect, Size},
 };
 
@@ -71,12 +71,12 @@ impl App {
     /// # let mut app = App::new(layout::component::<Text>(
     /// #     TextProperties::new().content("Hello, world!"),
     /// # ));
-    /// app.run_event_loop(zi::frontend::default()?)?;
+    /// app.run_event_loop(zi::backend::default()?)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn run_event_loop(&mut self, mut frontend: impl Frontend) -> Result<()> {
-        let mut screen = Canvas::new(frontend.size()?);
+    pub fn run_event_loop(&mut self, mut backend: impl Backend) -> Result<()> {
+        let mut screen = Canvas::new(backend.size()?);
         let mut poll_state = PollState::Dirty(None);
         let mut last_drawn = Instant::now() - REDRAW_LATENCY;
         let mut runtime = RuntimeBuilder::new_current_thread().enable_all().build()?;
@@ -104,7 +104,7 @@ impl App {
 
                     // Present
                     let now = Instant::now();
-                    let num_bytes_presented = frontend.present(&screen)?;
+                    let num_bytes_presented = backend.present(&screen)?;
                     let presented_time = now.elapsed();
 
                     log::debug!(
@@ -125,7 +125,7 @@ impl App {
                 _ => {}
             }
 
-            poll_state = self.poll_events_batch(&mut runtime, &mut frontend, last_drawn)?;
+            poll_state = self.poll_events_batch(&mut runtime, &mut backend, last_drawn)?;
         }
 
         Ok(())
@@ -254,7 +254,7 @@ impl App {
     fn poll_events_batch(
         &mut self,
         runtime: &mut Runtime,
-        frontend: &mut impl Frontend,
+        backend: &mut impl Backend,
         last_drawn: Instant,
     ) -> Result<PollState> {
         let mut force_redraw = false;
@@ -280,12 +280,12 @@ impl App {
                 tokio::select! {
                     link_message = self.link.receiver.recv() => {
                         poll_state = self.handle_link_message(
-                            frontend,
+                            backend,
                             link_message.expect("At least one sender exists."),
                         )?;
                         Ok(())
                     }
-                    input_event = frontend.event_stream().next() => {
+                    input_event = backend.event_stream().next() => {
                         poll_state = self.handle_input_event(input_event.expect(
                             "At least one sender exists.",
                         )?)?;
@@ -327,7 +327,7 @@ impl App {
     #[inline]
     fn handle_link_message(
         &mut self,
-        frontend: &mut impl Frontend,
+        backend: &mut impl Backend,
         message: LinkMessage,
     ) -> Result<PollState> {
         Ok(match message {
@@ -351,9 +351,9 @@ impl App {
             }
             LinkMessage::Exit => PollState::Exit,
             LinkMessage::RunExclusive(process) => {
-                frontend.suspend()?;
+                backend.suspend()?;
                 let maybe_message = process();
-                frontend.resume()?;
+                backend.resume()?;
                 // force_redraw = true;
                 if let Some((component_id, dyn_message)) = maybe_message {
                     self.components

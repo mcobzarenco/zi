@@ -1,4 +1,4 @@
-//! Terminal frontend implementation using [crossterm](https://docs.rs/crossterm)
+//! Terminal backend implementation using [crossterm](https://docs.rs/crossterm)
 
 use crossterm::{self, queue, QueueableCommand};
 use futures::stream::{Stream, StreamExt};
@@ -10,17 +10,17 @@ use std::{
 use super::{
     painter::{FullPainter, IncrementalPainter, PaintOperation, Painter},
     utils::MeteredWriter,
-    Event, Frontend, Result,
+    Backend, Event, Result,
 };
 use crate::terminal::{Canvas, Colour, Key, Size, Style};
 
-/// Creates a new frontend with an incremental painter. It only draws those
+/// Creates a new backend with an incremental painter. It only draws those
 /// parts of the terminal that have changed since last drawn.
 pub fn incremental() -> Result<Crossterm<IncrementalPainter>> {
     Crossterm::<IncrementalPainter>::new()
 }
 
-/// Creates a new frontend with an incremental painter. It only draws those
+/// Creates a new backend with an incremental painter. It only draws those
 /// parts of the terminal that have changed since last drawn.
 pub fn full() -> Result<Crossterm<FullPainter>> {
     Crossterm::<FullPainter>::new()
@@ -29,7 +29,7 @@ pub fn full() -> Result<Crossterm<FullPainter>> {
 /// Crossterm error type
 pub type Error = crossterm::ErrorKind;
 
-/// Frontend based on [crossterm](https://docs.rs/crossterm)
+/// Backend based on [crossterm](https://docs.rs/crossterm)
 pub struct Crossterm<PainterT: Painter = IncrementalPainter> {
     target: MeteredWriter<BufWriter<Stdout>>,
     painter: PainterT,
@@ -37,13 +37,13 @@ pub struct Crossterm<PainterT: Painter = IncrementalPainter> {
 }
 
 impl<PainterT: Painter> Crossterm<PainterT> {
-    /// Create a new frontend instance.
+    /// Create a new backend instance.
     ///
     /// This method initialises the underlying tty device, enables raw mode,
     /// hides the cursor and enters alternative screen mode. Additionally, an
     /// async event stream with input events from stdin is started.
     pub fn new() -> Result<Self> {
-        let mut frontend = Self {
+        let mut backend = Self {
             target: MeteredWriter::new(BufWriter::with_capacity(1 << 20, io::stdout())),
             painter: PainterT::create(
                 crossterm::terminal::size()
@@ -51,12 +51,12 @@ impl<PainterT: Painter> Crossterm<PainterT> {
             ),
             events: Some(new_event_stream()),
         };
-        initialise_tty::<PainterT, _>(&mut frontend.target)?;
-        Ok(frontend)
+        initialise_tty::<PainterT, _>(&mut backend.target)?;
+        Ok(backend)
     }
 }
 
-impl<PainterT: Painter> Frontend for Crossterm<PainterT> {
+impl<PainterT: Painter> Backend for Crossterm<PainterT> {
     type EventStream = Pin<Box<dyn Stream<Item = Result<Event>> + Send + 'static>>;
 
     #[inline]
@@ -92,7 +92,7 @@ impl<PainterT: Painter> Frontend for Crossterm<PainterT> {
 
     #[inline]
     fn event_stream(&mut self) -> &mut Self::EventStream {
-        self.events.as_mut().expect("Frontend events are suspended")
+        self.events.as_mut().expect("Backend events are suspended")
     }
 
     #[inline]
@@ -118,9 +118,9 @@ impl<PainterT: Painter> Drop for Crossterm<PainterT> {
             crossterm::cursor::Show,
             crossterm::terminal::LeaveAlternateScreen
         )
-        .expect("Failed to clear screen when closing `crossterm` frontend.");
+        .expect("Failed to clear screen when closing `crossterm` backend.");
         crossterm::terminal::disable_raw_mode()
-            .expect("Failed to disable raw mode when closing `crossterm` frontend.");
+            .expect("Failed to disable raw mode when closing `crossterm` backend.");
     }
 }
 
@@ -189,7 +189,7 @@ fn queue_set_style(target: &mut impl Write, style: &Style) -> Result<()> {
 }
 
 #[inline]
-fn new_event_stream() -> <Crossterm as Frontend>::EventStream {
+fn new_event_stream() -> <Crossterm as Backend>::EventStream {
     Box::pin(
         crossterm::event::EventStream::new()
             .filter_map(|event| async move {

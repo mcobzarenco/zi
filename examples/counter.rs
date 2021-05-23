@@ -95,5 +95,5 @@ const STYLE: Style = Style::bold(BACKGROUND, FOREGROUND);
 
 fn main() -> zi::Result<()> {
     let mut app = App::new(Counter::with(()));
-    app.run_event_loop(zi::frontend::default()?)
+    app.run_event_loop(zi::backend::default()?)
 }
