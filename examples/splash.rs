@@ -1,9 +1,10 @@
 use std::cmp;
 use unicode_width::UnicodeWidthStr;
 use zi::{
+    backend,
     components::border::{Border, BorderProperties},
-    frontend, layout, App, BindingMatch, BindingTransition, Canvas, Colour, Component,
-    ComponentLink, Key, Layout, Rect, Result, ShouldRender, Size, Style,
+    layout, App, BindingMatch, BindingTransition, Canvas, Colour, Component, ComponentLink, Key,
+    Layout, Rect, Result, ShouldRender, Size, Style,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -181,5 +182,5 @@ const SPLASH_CREDITS: &str = "C-x C-c to quit";
 
 fn main() -> Result<()> {
     let mut app = App::new(layout::component::<SplashGrid>(()));
-    app.run_event_loop(frontend::crossterm::incremental()?)
+    app.run_event_loop(backend::crossterm::incremental()?)
 }

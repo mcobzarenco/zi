@@ -1,6 +1,6 @@
 [package]
 name = "zi"
-version = "0.1.6"
+version = "0.2.0"
 authors = ["Marius Cobzarenco <marius@reinfer.io>"]
 description = "An incremental declarative library for building terminal user interfaces."
 readme = "README.md"
@@ -35,10 +35,10 @@ num-complex = "0.3.1"
 rayon = "1.5.0"
 
 [features]
-default = ["frontend-crossterm"]
+default = ["backend-crossterm"]
 
-# Enables a terminal frontend using `crossterm`.
-frontend-crossterm = [
+# Enables a terminal backend using `crossterm`.
+backend-crossterm = [
   "crossterm",
 ]
 

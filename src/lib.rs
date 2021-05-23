@@ -7,7 +7,7 @@
 //! The [`App`](struct.App.html) runtime keeps track of components as they are
 //! mounted, updated and eventually removed and only calls `view()` on those UI
 //! components that have changed and have to be re-rendered. Lower level and
-//! independent of the components, the terminal frontend will incrementally
+//! independent of the components, the terminal backend will incrementally
 //! redraw only those parts of the screen that have changed.
 //!
 //! # A Basic Example
@@ -110,15 +110,15 @@
 //!
 //! fn main() -> zi::Result<()> {
 //!     let mut app = App::new(layout::component::<Counter>(()));
-//!     app.run_event_loop(zi::frontend::default()?)
+//!     app.run_event_loop(zi::backend::default()?)
 //! }
 //! ```
 //!
 //! More examples can be found in the `examples` directory of the git
 //! repository.
 
+pub mod backend;
 pub mod components;
-pub mod frontend;
 pub mod terminal;
 
 pub use app::App;

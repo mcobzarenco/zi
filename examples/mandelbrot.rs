@@ -1,8 +1,8 @@
 use num_complex::Complex;
 use rayon::{iter::ParallelExtend, prelude::*};
 use zi::{
-    self, frontend, layout, terminal::SquarePixelGrid, App, BindingMatch, BindingTransition,
-    Colour, Component, ComponentLink, Key, Layout, Rect, Result, ShouldRender, Size, Style,
+    self, backend, layout, terminal::SquarePixelGrid, App, BindingMatch, BindingTransition, Colour,
+    Component, ComponentLink, Key, Layout, Rect, Result, ShouldRender, Size, Style,
 };
 
 type Position = euclid::default::Point2D<f64>;
@@ -228,5 +228,5 @@ impl Component for Viewer {
 fn main() -> Result<()> {
     env_logger::init();
     let mut app = App::new(layout::component::<Viewer>(()));
-    app.run_event_loop(frontend::default()?)
+    app.run_event_loop(backend::default()?)
 }
