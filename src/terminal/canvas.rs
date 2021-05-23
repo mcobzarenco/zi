@@ -133,7 +133,7 @@ impl Canvas {
                 continue;
             }
 
-            self.buffer[current_offset] = Some(Textel { style, grapheme });
+            self.buffer[current_offset] = Some(Textel { grapheme, style });
 
             let num_modified = cmp::min(grapheme_width, max_offset - current_offset);
             self.buffer[current_offset + 1..current_offset + num_modified]

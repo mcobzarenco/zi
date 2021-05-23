@@ -72,7 +72,7 @@ impl Component for Text {
     type Properties = TextProperties;
 
     fn create(properties: Self::Properties, frame: Rect, _link: ComponentLink<Self>) -> Self {
-        Self { properties, frame }
+        Self { frame, properties }
     }
 
     fn change(&mut self, properties: Self::Properties) -> ShouldRender {

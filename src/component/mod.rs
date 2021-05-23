@@ -252,9 +252,9 @@ pub enum ShouldRender {
     No,
 }
 
-impl Into<bool> for ShouldRender {
-    fn into(self) -> bool {
-        self == ShouldRender::Yes
+impl From<ShouldRender> for bool {
+    fn from(should_render: ShouldRender) -> Self {
+        matches!(should_render, ShouldRender::Yes)
     }
 }
 
