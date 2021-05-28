@@ -1,6 +1,7 @@
 use std::{
     any::{Any, TypeId},
     hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
 };
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -74,40 +75,17 @@ impl Clone for DynamicTemplate {
     }
 }
 
-impl Template for DynamicTemplate {
-    #[inline]
-    fn key(&self) -> Option<ComponentKey> {
-        self.0.key()
-    }
+impl Deref for DynamicTemplate {
+    type Target = dyn Template;
 
-    #[inline]
-    fn component_type_id(&self) -> TypeId {
-        self.0.component_type_id()
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
     }
+}
 
-    #[inline]
-    fn generate_id(&self, id: u64) -> ComponentId {
-        self.0.generate_id(id)
-    }
-
-    #[inline]
-    fn create(
-        &mut self,
-        id: ComponentId,
-        frame: Rect,
-        sender: UnboundedSender<LinkMessage>,
-    ) -> Box<dyn Renderable + 'static> {
-        self.0.create(id, frame, sender)
-    }
-
-    #[inline]
-    fn dynamic_properties(&mut self) -> DynamicProperties {
-        self.0.dynamic_properties()
-    }
-
-    #[inline]
-    fn clone(&self) -> DynamicTemplate {
-        self.0.clone()
+impl DerefMut for DynamicTemplate {
+    fn deref_mut(&mut self) -> &mut <Self as Deref>::Target {
+        self.0.deref_mut()
     }
 }
 

@@ -17,7 +17,7 @@ use crate::{
     backend::{Backend, Event},
     component::{
         layout::{LaidCanvas, LaidComponent, Layout},
-        template::{ComponentId, DynamicMessage, DynamicProperties, Renderable, Template},
+        template::{ComponentId, DynamicMessage, DynamicProperties, Renderable},
         BindingMatch, BindingTransition, LinkMessage, ShouldRender,
     },
     error::Result,

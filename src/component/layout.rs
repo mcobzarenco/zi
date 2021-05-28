@@ -8,7 +8,7 @@ use std::{
 };
 
 use super::{
-    template::{ComponentDef, DynamicTemplate, Template},
+    template::{ComponentDef, DynamicTemplate},
     Component,
 };
 use crate::terminal::{Canvas, Position, Rect, Size};
