@@ -26,6 +26,7 @@ num-complex = "0.4.0"
 rayon = "1.5.1"
 
 zi-crossterm = { version = "0.2.0", path = "backends/crossterm" }
+zi-wgpu = { version = "0.2.0", path = "backends/wgpu" }
 
 [[bench]]
 name = "senders"

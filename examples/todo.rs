@@ -11,7 +11,8 @@ use zi::{
     BindingMatch, BindingTransition, Callback, Canvas, Colour, Component, ComponentExt,
     ComponentLink, FlexDirection, Item, Key, Layout, Rect, ShouldRender, Style,
 };
-use zi_crossterm::Result;
+use zi_crossterm::{Crossterm, Result as CrosstermResult};
+use zi_wgpu::{GpuBackend, PhysicalSize, Result as WgpuResult, WindowBuilder};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckboxProperties {
@@ -487,7 +488,18 @@ const LOGO: &str = r#"
 
 "#;
 
-fn main() -> Result<()> {
+fn main() -> WgpuResult<()> {
     env_logger::init();
-    zi_crossterm::incremental()?.run_event_loop(TodoMvc::with(()))
+    // zi_crossterm::incremental()?.run_event_loop(TodoMvc::with(()))
+
+    let window_builder = WindowBuilder::new()
+        .with_decorations(true)
+        .with_inner_size(PhysicalSize {
+            width: 1280,
+            height: 1024,
+        })
+        .with_resizable(true)
+        .with_title("Todo - Zi Example");
+
+    GpuBackend::new(window_builder)?.run(TodoMvc::with(()))
 }
