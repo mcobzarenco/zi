@@ -1,0 +1,7 @@
+# Unreleased
+ - Moves the responsibility of running the event loop from the `App` struct and
+   into the backend. This inversion of control help reduce sys dependencies in
+   zi::App (moves tokio dependency to the `crossterm` backend which was moved to
+   a separate crate, yay). This change allows for different implementations of
+   the event loop (e.g. using winit which will come in handy for a new
+   experimental wgpu backend).

@@ -24,7 +24,6 @@ pub struct Textel {
 pub struct Canvas {
     buffer: Vec<Option<Textel>>,
     size: Size,
-    min_size: Size,
 }
 
 impl Canvas {
@@ -43,18 +42,12 @@ impl Canvas {
                 .take(size.area())
                 .collect(),
             size,
-            min_size: Size::zero(),
         }
     }
 
     #[inline]
     pub fn size(&self) -> Size {
         self.size
-    }
-
-    #[inline]
-    pub fn min_size(&self) -> Size {
-        self.min_size
     }
 
     #[inline]
@@ -71,7 +64,6 @@ impl Canvas {
     pub fn resize(&mut self, size: Size) {
         self.buffer.resize(size.area(), Default::default());
         self.size = size;
-        self.min_size = size.min(self.min_size);
     }
 
     #[inline]
@@ -143,10 +135,6 @@ impl Canvas {
             current_offset += num_modified;
         }
 
-        // Update `min_size`
-        self.min_size.width = cmp::max(self.min_size.width, current_offset);
-        self.min_size.height = cmp::max(self.min_size.height, y);
-
         current_offset - initial_offset
     }
 
@@ -178,6 +166,32 @@ impl Canvas {
     #[inline]
     pub fn textel_mut(&mut self, x: usize, y: usize) -> &mut Option<Textel> {
         &mut self.buffer[y * self.size.width + x]
+    }
+}
+
+impl std::fmt::Display for Canvas {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(
+            formatter,
+            "[Canvas {}x{}]",
+            self.size.width, self.size.height
+        )?;
+
+        for row in self.buffer.chunks(self.size.width) {
+            for textel in row.iter() {
+                write!(
+                    formatter,
+                    "[{:2}]",
+                    textel
+                        .as_ref()
+                        .map(|textel| textel.grapheme.as_str())
+                        .unwrap_or("")
+                )?;
+            }
+            writeln!(formatter)?;
+        }
+
+        Ok(())
     }
 }
 

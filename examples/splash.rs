@@ -1,11 +1,11 @@
 use std::cmp;
 use unicode_width::UnicodeWidthStr;
 use zi::{
-    backend,
     components::border::{Border, BorderProperties},
-    layout, App, BindingMatch, BindingTransition, Canvas, Colour, Component, ComponentLink, Key,
-    Layout, Rect, Result, ShouldRender, Size, Style,
+    layout, BindingMatch, BindingTransition, Canvas, Colour, Component, ComponentExt,
+    ComponentLink, Key, Layout, Rect, ShouldRender, Size, Style,
 };
+use zi_crossterm::Result;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Theme {
@@ -181,6 +181,6 @@ const SPLASH_TAGLINE: &str = "a splash screen for the terminal";
 const SPLASH_CREDITS: &str = "C-x C-c to quit";
 
 fn main() -> Result<()> {
-    let mut app = App::new(layout::component::<SplashGrid>(()));
-    app.run_event_loop(backend::crossterm::incremental()?)
+    env_logger::init();
+    zi_crossterm::incremental()?.run_event_loop(SplashGrid::with(()))
 }

@@ -4,7 +4,7 @@
 //! let you split the UI into independent, reusable pieces, and think about each
 //! piece in isolation.
 //!
-//! The [`App`](struct.App.html) runtime keeps track of components as they are
+//! The [`App`](app/struct.App.html) runtime keeps track of components as they are
 //! mounted, updated and eventually removed and only calls `view()` on those UI
 //! components that have changed and have to be re-rendered. Lower level and
 //! independent of the components, the terminal backend will incrementally
@@ -28,6 +28,8 @@
 //!     },
 //!     prelude::*,
 //! };
+//! use zi_crossterm::Result;
+//!
 //!
 //! // Message type handled by the `Counter` component.
 //! enum Message {
@@ -49,7 +51,7 @@
 //! // UI in Zi. The trait describes stateful components and their lifecycle.
 //! impl Component for Counter {
 //!     // Messages are used to make components dynamic and interactive. For simple
-//!     // or pure components, this will be `()`. Complex, stateful ones will
+//!     // or pure components, this will be `()`. Complex, stateful components will
 //!     // typically use an enum to declare multiple Message types. In this case, we
 //!     // will emit two kinds of message (`Increment` or `Decrement`) in reaction
 //!     // to user input.
@@ -108,20 +110,18 @@
 //!     }
 //! }
 //!
-//! fn main() -> zi::Result<()> {
-//!     let mut app = App::new(layout::component::<Counter>(()));
-//!     app.run_event_loop(zi::backend::default()?)
+//! fn main() -> zi_crossterm::Result<()> {
+//!   zi_crossterm::incremental()?.run_event_loop(Counter::with(()))
 //! }
 //! ```
 //!
 //! More examples can be found in the `examples` directory of the git
 //! repository.
 
-pub mod backend;
+pub mod app;
 pub mod components;
 pub mod terminal;
 
-pub use app::App;
 pub use component::{
     layout::{
         self, auto, column, component, container, fixed, row, ComponentExt, ComponentKey,
@@ -129,12 +129,10 @@ pub use component::{
     },
     BindingMatch, BindingTransition, Callback, Component, ComponentLink, Layout, ShouldRender,
 };
-pub use error::{Error, Result};
 pub use terminal::{Background, Canvas, Colour, Foreground, Key, Position, Rect, Size, Style};
 
 pub mod prelude {
     //! The Zi prelude.
-    pub use super::App;
     pub use super::{
         layout, BindingMatch, BindingTransition, Component, ComponentExt, ComponentLink, Layout,
         ShouldRender,
@@ -143,7 +141,5 @@ pub mod prelude {
 }
 
 // Crate only modules
-pub(crate) mod app;
 pub(crate) mod component;
-pub(crate) mod error;
 pub(crate) mod text;

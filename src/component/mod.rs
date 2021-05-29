@@ -14,10 +14,12 @@ use std::{
     marker::PhantomData,
     rc::Rc,
 };
-use tokio::sync::mpsc::UnboundedSender;
 
 use self::template::{ComponentId, DynamicMessage};
-use crate::terminal::{Key, Rect};
+use crate::{
+    app::{ComponentMessage, MessageSender},
+    terminal::{Key, Rect},
+};
 
 /// Components are the building blocks of the UI in Zi.
 ///
@@ -170,7 +172,7 @@ where
 /// it's used to gracefully stop a running [`App`](struct.App.html).
 #[derive(Debug)]
 pub struct ComponentLink<ComponentT> {
-    sender: UnboundedSender<LinkMessage>,
+    sender: Box<dyn MessageSender>,
     component_id: ComponentId,
     _component: PhantomData<fn() -> ComponentT>,
 }
@@ -178,13 +180,12 @@ pub struct ComponentLink<ComponentT> {
 impl<ComponentT: Component> ComponentLink<ComponentT> {
     /// Sends a message to the component.
     pub fn send(&self, message: ComponentT::Message) {
-        self.sender
-            .send(LinkMessage::Component(
-                self.component_id,
-                DynamicMessage(Box::new(message)),
-            ))
-            .map_err(|_| ()) // tokio's SendError doesn't implement Debug
-            .expect("App receiver needs to outlive senders for inter-component messages");
+        self.sender.send(ComponentMessage(LinkMessage::Component(
+            self.component_id,
+            DynamicMessage(Box::new(message)),
+        )));
+        // .map_err(|_| ()) // tokio's SendError doesn't implement Debug
+        // .expect("App receiver needs to outlive senders for inter-component messages");
     }
 
     /// Creates a `Callback` which will send a message to the linked component's
@@ -203,29 +204,12 @@ impl<ComponentT: Component> ComponentLink<ComponentT> {
     /// stop asynchronously and may deliver other pending messages before
     /// exiting.
     pub fn exit(&self) {
-        self.sender
-            .send(LinkMessage::Exit)
-            .map_err(|_| ()) // tokio's SendError doesn't implement Debug
-            .expect("App needs to outlive components");
+        self.sender.send(ComponentMessage(LinkMessage::Exit));
+        // .map_err(|_| ()) // tokio's SendError doesn't implement Debug
+        // .expect("App needs to outlive components");
     }
 
-    /// Runs a closure that requires exclusive access to the backend (i.e.
-    /// typically to stdin / stdout). For example spawning an external editor to
-    /// collect some text.
-    pub fn run_exclusive(
-        &self,
-        process: impl FnOnce() -> Option<ComponentT::Message> + Send + 'static,
-    ) {
-        let component_id = self.component_id;
-        self.sender
-            .send(LinkMessage::RunExclusive(Box::new(move || {
-                process().map(|message| (component_id, DynamicMessage(Box::new(message))))
-            })))
-            .map_err(|_| ()) // tokio's SendError doesn't implement Debug
-            .expect("App needs to outlive components");
-    }
-
-    pub(crate) fn new(sender: UnboundedSender<LinkMessage>, component_id: ComponentId) -> Self {
+    pub(crate) fn new(sender: Box<dyn MessageSender>, component_id: ComponentId) -> Self {
         assert_eq!(TypeId::of::<ComponentT>(), component_id.type_id());
         Self {
             sender,
@@ -238,7 +222,7 @@ impl<ComponentT: Component> ComponentLink<ComponentT> {
 impl<ComponentT> Clone for ComponentLink<ComponentT> {
     fn clone(&self) -> Self {
         Self {
-            sender: self.sender.clone(),
+            sender: self.sender.clone_box(),
             component_id: self.component_id,
             _component: PhantomData,
         }
@@ -293,7 +277,20 @@ impl<Message> BindingMatch<Message> {
 pub(crate) enum LinkMessage {
     Component(ComponentId, DynamicMessage),
     Exit,
-    RunExclusive(Box<dyn FnOnce() -> Option<(ComponentId, DynamicMessage)> + Send + 'static>),
+}
+
+impl std::fmt::Debug for LinkMessage {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "LinkMessage::")?;
+        match self {
+            Self::Component(id, message) => write!(
+                formatter,
+                "Component({:?}, DynamicMessage(...) @ {:?})",
+                id, &*message.0 as *const _
+            ),
+            Self::Exit => write!(formatter, "Exit"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

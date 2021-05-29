@@ -3,11 +3,10 @@ use std::{
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
 };
-use tokio::sync::mpsc::UnboundedSender;
 
 use super::{
     layout::{ComponentKey, Layout},
-    BindingMatch, Component, ComponentLink, LinkMessage, ShouldRender,
+    BindingMatch, Component, ComponentLink, MessageSender, ShouldRender,
 };
 use crate::terminal::{Key, Rect};
 
@@ -66,7 +65,7 @@ impl std::fmt::Display for ComponentId {
 }
 
 pub(crate) struct DynamicMessage(pub(crate) Box<dyn Any + Send + 'static>);
-pub(crate) struct DynamicProperties(Box<dyn Any + 'static>);
+pub(crate) struct DynamicProperties(Box<dyn Any>);
 pub(crate) struct DynamicTemplate(pub(crate) Box<dyn Template>);
 
 impl Clone for DynamicTemplate {
@@ -171,7 +170,7 @@ pub(crate) trait Template {
         &mut self,
         id: ComponentId,
         frame: Rect,
-        sender: UnboundedSender<LinkMessage>,
+        sender: Box<dyn MessageSender>,
     ) -> Box<dyn Renderable + 'static>;
 
     fn dynamic_properties(&mut self) -> DynamicProperties;
@@ -229,7 +228,7 @@ impl<ComponentT: Component> Template for ComponentDef<ComponentT> {
         &mut self,
         component_id: ComponentId,
         frame: Rect,
-        sender: UnboundedSender<LinkMessage>,
+        sender: Box<dyn MessageSender>,
     ) -> Box<dyn Renderable> {
         let link = ComponentLink::new(sender, component_id);
         Box::new(ComponentT::create(self.properties_unwrap(), frame, link))

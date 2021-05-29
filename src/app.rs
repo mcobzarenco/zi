@@ -1,143 +1,328 @@
-//! The `App` application runtime, which runs the event loop and draws your
-//! components.
+//! The application runtime. This is low-level module useful when you are
+//! implementing a backend, but otherwise not meant to be used directly by an
+//! end application.
 
-use futures::{self, stream::StreamExt};
 use smallvec::SmallVec;
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
-use tokio::{
-    self,
-    runtime::{Builder as RuntimeBuilder, Runtime},
-    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
-};
+use std::{collections::HashMap, fmt::Debug, time::Instant};
 
 use crate::{
-    backend::{Backend, Event},
     component::{
         layout::{LaidCanvas, LaidComponent, Layout},
         template::{ComponentId, DynamicMessage, DynamicProperties, Renderable},
         BindingMatch, BindingTransition, LinkMessage, ShouldRender,
     },
-    error::Result,
-    terminal::{Canvas, Key, Position, Rect, Size},
+    terminal::{Canvas, Event, Key, Position, Rect, Size},
 };
 
-/// The `App` application runtime, which runs the event loop and draws your
-/// components.
+pub trait MessageSender: Debug + Send + 'static {
+    fn send(&self, message: ComponentMessage);
+
+    fn clone_box(&self) -> Box<dyn MessageSender>;
+}
+
+#[derive(Debug)]
+pub struct ComponentMessage(pub(crate) LinkMessage);
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum PollState {
+    Clean,
+    Dirty(Option<Size>),
+    Exit,
+}
+
+#[derive(Debug)]
+struct AppRuntime {
+    screen: Canvas,
+    poll_state: PollState,
+    num_frame: usize,
+}
+
+impl AppRuntime {
+    fn new(size: Size) -> Self {
+        Self {
+            screen: Canvas::new(size),
+            poll_state: PollState::Dirty(None),
+            num_frame: 0,
+        }
+    }
+}
+
+/// The application runtime.
+///
+/// The runtime encapsulates the whole state of the application. It performs
+/// layout calculations and draws the component tree to a canvas. The runtime
+/// owns all the components and manages their lifetime. It creates components
+/// when first mounted and it is responsible for delivering messages, input and
+/// layout events.
+///
+/// The runtime itself does not run an event loop. This is delegated to a
+/// particular backend implementation to allow for maximum flexibility. For
+/// instance, the `crossterm` terminal backend implements an event loop using
+/// tokio channels for component message + mio for stdin input and resize
+/// events.
+///
+/// Note: This is a low-level struct useful when you are implementing a backend
+/// or for testing your application. For an end user application, you would
+/// normally use a backend that wraps an App in an event loop, see the examples.
 pub struct App {
     root: Layout,
     components: HashMap<ComponentId, MountedComponent>,
     layouts: HashMap<ComponentId, Layout>,
     subscriptions: ComponentSubscriptions,
     controller: InputController,
-    link: LinkChannel,
+    runtime: AppRuntime,
+    sender: Box<dyn MessageSender>,
 }
 
 impl App {
-    /// Creates a new application runtime. You should provide an initial layout
-    /// containing the root components.
+    /// Creates a new application runtime
     ///
-    /// ```
-    /// # use zi::prelude::*;
-    /// use zi::components::text::{Text, TextProperties};
+    /// To instantiate a new runtime you need three things
     ///
-    /// let mut app = App::new(layout::component::<Text>(
-    ///    TextProperties::new().content("Hello, world!"),
-    /// ));
+    /// - a [`MessageSender`](trait.MessageSender.html) responsible for delivering
+    ///   messages sent by components using [`ComponentLink`](../struct.ComponentLink.html)
+    /// - the `size` of the initial canvas
+    /// - the root [`Layout`](../struct.Layout.html) that will be rendered
+    ///
+    /// ```no_run
+    /// use std::sync::mpsc;
+    /// use zi::{
+    ///     app::{App, ComponentMessage, MessageSender},
+    ///     components::text::{Text, TextProperties},
+    ///     prelude::*,
+    /// };
+    ///
+    /// #[derive(Clone, Debug)]
+    /// struct MessageQueue(mpsc::Sender<ComponentMessage>);
+    ///
+    /// impl MessageSender for MessageQueue {
+    ///     fn send(&self, message: ComponentMessage) {
+    ///         self.0.send(message).unwrap();
+    ///     }
+    ///
+    ///     fn clone_box(&self) -> Box<dyn MessageSender> {
+    ///         Box::new(self.clone())
+    ///     }
+    /// }
+    ///
+    /// # fn main() {
+    /// let (sender, receiver) = mpsc::channel();
+    /// let message_queue = MessageQueue(sender);
+    /// let mut app = App::new(
+    ///     message_queue,
+    ///     Size::new(10, 10),
+    ///     Text::with(TextProperties::new().content("Hello")),
+    /// );
+    ///
+    /// loop {
+    ///     // Deliver component messages. This would block forever as no component
+    ///     // sends any messages.
+    ///     let message = receiver.recv().unwrap();
+    ///
+    ///     app.handle_message(message);
+    ///     app.handle_resize(Size::new(20, 20));
+    ///
+    ///     // Draw
+    ///     let canvas = app.draw();
+    ///     eprintln!("{}", canvas);
+    /// }
+    /// # }
     /// ```
-    pub fn new(root: Layout) -> Self {
+
+    pub fn new(sender: impl MessageSender, size: Size, root: Layout) -> Self {
         Self {
+            root,
             components: HashMap::new(),
             layouts: HashMap::new(),
             subscriptions: ComponentSubscriptions::new(),
             controller: InputController::new(),
-            link: LinkChannel::new(),
-            root,
+            runtime: AppRuntime::new(size),
+            sender: Box::new(sender),
         }
     }
 
-    /// Starts the event loop. This is the main entry point of a Zi application.
-    /// It draws and presents the components to the backend, handles user input
-    /// and delivers messages to components. This method returns either when
-    /// prompted using the [`exit`](struct.ComponentLink.html#method.exit)
-    /// method on [ComponentLink](struct.ComponentLink.html) or on error.
-    ///
-    /// ```no_run
-    /// # use zi::prelude::*;
-    /// # use zi::components::text::{Text, TextProperties};
-    /// # fn main() -> zi::Result<()> {
-    /// # let mut app = App::new(layout::component::<Text>(
-    /// #     TextProperties::new().content("Hello, world!"),
-    /// # ));
-    /// app.run_event_loop(zi::backend::default()?)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn run_event_loop(&mut self, mut backend: impl Backend) -> Result<()> {
-        let mut screen = Canvas::new(backend.size()?);
-        let mut poll_state = PollState::Dirty(None);
-        let mut last_drawn = Instant::now() - REDRAW_LATENCY;
-        let mut runtime = RuntimeBuilder::new_current_thread().enable_all().build()?;
-        let mut num_frame = 0;
+    /// Return the application's poll state
+    #[inline]
+    pub fn poll_state(&self) -> PollState {
+        self.runtime.poll_state
+    }
 
-        loop {
-            match poll_state {
-                PollState::Dirty(maybe_new_size) => {
-                    // Draw
-                    let now = Instant::now();
-                    if let Some(new_size) = maybe_new_size {
-                        log::debug!(
-                            "Screen resized {}x{} -> {}x{}",
-                            screen.size().width,
-                            screen.size().height,
-                            new_size.width,
-                            new_size.height
-                        );
-                        screen.resize(new_size);
+    /// Return `true` if any components currently mounted are tickable
+    #[inline]
+    pub fn is_tickable(&mut self) -> bool {
+        !self.subscriptions.tickable.is_empty()
+    }
+
+    /// Resizes the application's canvas lazily
+    #[inline]
+    pub fn tick(&mut self) {
+        for TickSubscription {
+            component_id,
+            message,
+        } in self.subscriptions.tickable.drain(..)
+        {
+            match self.components.get_mut(&component_id) {
+                Some(component) => {
+                    if component.update(message) {
+                        self.runtime.poll_state.merge(PollState::Dirty(None));
                     }
-
-                    let frame = Rect::new(Position::new(0, 0), screen.size());
-                    let statistics = self.draw(&mut screen, frame, num_frame);
-                    let drawn_time = now.elapsed();
-
-                    // Present
-                    let now = Instant::now();
-                    let num_bytes_presented = backend.present(&screen)?;
-                    let presented_time = now.elapsed();
-
+                }
+                None => {
                     log::debug!(
-                        "Frame {}: {} comps [{}] draw {:.1}ms pres {:.1}ms diff {}b",
-                        num_frame,
-                        self.components.len(),
-                        statistics,
-                        drawn_time.as_secs_f64() * 1000.0,
-                        presented_time.as_secs_f64() * 1000.0,
-                        num_bytes_presented,
+                        "Received message for nonexistent component (id: {}).",
+                        component_id,
                     );
-                    last_drawn = Instant::now();
-                    num_frame += 1;
                 }
-                PollState::Exit => {
-                    break;
-                }
-                _ => {}
             }
-
-            poll_state = self.poll_events_batch(&mut runtime, &mut backend, last_drawn)?;
         }
+    }
 
-        Ok(())
+    /// Compute component layout and draw the application to a canvas
+    ///
+    /// This function flushes all pending changes to the component tree,
+    /// computes the layout and redraws components where needed. After calling this
+    /// function `poll_state()` will be `PollState::Clean`
+    #[inline]
+    pub fn draw(&mut self) -> &Canvas {
+        match self.runtime.poll_state {
+            PollState::Dirty(maybe_new_size) => {
+                // Draw
+                let now = Instant::now();
+                if let Some(new_size) = maybe_new_size {
+                    log::debug!(
+                        "Screen resized {}x{} -> {}x{}",
+                        self.runtime.screen.size().width,
+                        self.runtime.screen.size().height,
+                        new_size.width,
+                        new_size.height
+                    );
+                    self.runtime.screen.resize(new_size);
+                }
+
+                let frame = Rect::new(Position::new(0, 0), self.runtime.screen.size());
+                let statistics = self.draw_tree(frame, self.runtime.num_frame);
+                let drawn_time = now.elapsed();
+
+                // Present
+                // let now = Instant::now();
+                // let num_bytes_presented = backend.present(&self.runtime.screen)?;
+                // let presented_time = now.elapsed();
+
+                log::debug!(
+                    "Frame {}: {} comps [{}] draw {:.1}ms",
+                    self.runtime.num_frame,
+                    self.components.len(),
+                    statistics,
+                    drawn_time.as_secs_f64() * 1000.0,
+                    // presented_time.as_secs_f64() * 1000.0,
+                    // num_bytes_presented,
+                );
+                self.runtime.num_frame += 1;
+            }
+            PollState::Exit => {
+                panic!("tried drawing while the app is exiting");
+            }
+            _ => {}
+        }
+        self.runtime.poll_state = PollState::Clean;
+        &self.runtime.screen
+    }
+
+    /// Resizes the application canvas. This operation is lazy and the mounted
+    /// components won't be notified until [`draw`](method.draw.html) is called.
+    pub fn handle_resize(&mut self, size: Size) {
+        self.runtime.poll_state.merge(PollState::Dirty(Some(size)));
     }
 
     #[inline]
-    fn draw(&mut self, screen: &mut Canvas, frame: Rect, generation: Generation) -> DrawStatistics {
+    pub fn handle_message(&mut self, message: ComponentMessage) {
+        match message.0 {
+            LinkMessage::Component(component_id, dyn_message) => {
+                let should_render = self
+                    .components
+                    .get_mut(&component_id)
+                    .map(|component| component.update(dyn_message))
+                    .unwrap_or_else(|| {
+                        log::debug!(
+                            "Received message for nonexistent component (id: {}).",
+                            component_id,
+                        );
+                        false
+                    });
+                self.runtime.poll_state.merge(if should_render {
+                    PollState::Dirty(None)
+                } else {
+                    PollState::Clean
+                });
+            }
+            LinkMessage::Exit => {
+                self.runtime.poll_state.merge(PollState::Exit);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn handle_input(&mut self, event: Event) {
+        match event {
+            Event::KeyPress(key) => {
+                self.handle_key(key);
+                // todo: handle_event should return whether we need to rerender
+                self.runtime.poll_state.merge(PollState::Dirty(None));
+            }
+        }
+    }
+
+    #[inline]
+    fn handle_key(&mut self, key: Key) {
+        let Self {
+            ref mut components,
+            ref subscriptions,
+            ref mut controller,
+            ..
+        } = *self;
+        let mut clear_controller = false;
+        let mut changed_focus = false;
+
+        controller.push(key);
+        for component_id in subscriptions.focused.iter() {
+            let focused_component = components
+                .get_mut(component_id)
+                .expect("A focused component should be mounted.");
+            let binding = focused_component.input_binding(&controller.keys);
+            match binding.transition {
+                BindingTransition::Continue => {}
+                BindingTransition::Clear => {
+                    clear_controller = true;
+                }
+                BindingTransition::ChangedFocus => {
+                    changed_focus = true;
+                }
+            }
+            if let Some(message) = binding.message {
+                focused_component.update(message);
+            }
+
+            // If the focus has changed we don't notify other focused components
+            // deeper in the tree.
+            if changed_focus {
+                controller.keys.clear();
+            }
+        }
+
+        // If any component returned `BindingTransition::Clear`, we clear the controller.
+        if clear_controller {
+            controller.keys.clear();
+        }
+    }
+
+    #[inline]
+    fn draw_tree(&mut self, frame: Rect, generation: Generation) -> DrawStatistics {
         let Self {
             ref mut components,
             ref mut layouts,
+            ref mut runtime,
             ref mut subscriptions,
-            ref link,
+            ref sender,
             ..
         } = *self;
 
@@ -179,7 +364,7 @@ impl App {
                     let mut new_component = false;
                     let component = components.entry(component_id).or_insert_with(|| {
                         new_component = true;
-                        let renderable = template.create(component_id, frame, link.sender.clone());
+                        let renderable = template.create(component_id, frame, sender.clone_box());
                         MountedComponent {
                             renderable,
                             frame,
@@ -211,19 +396,10 @@ impl App {
                         subscriptions.add_tickable(component_id, message);
                     }
 
-                    // log::debug!(
-                    //     "should_render={} new={} parent_changed={} [{} at {}]",
-                    //     component.should_render,
-                    //     new_component,
-                    //     parent_changed,
-                    //     component_id,
-                    //     frame,
-                    // );
-
                     pending.push((component_id, frame, position_hash));
                 },
                 &mut |LaidCanvas { frame, canvas, .. }| {
-                    screen.copy_region(&canvas, frame);
+                    runtime.screen.copy_region(canvas, frame);
                 },
             );
         }
@@ -247,198 +423,6 @@ impl App {
         );
 
         statistics
-    }
-
-    /// Poll as many events as we can respecting REDRAW_LATENCY and REDRAW_LATENCY_SUSTAINED_IO
-    #[inline]
-    fn poll_events_batch(
-        &mut self,
-        runtime: &mut Runtime,
-        backend: &mut impl Backend,
-        last_drawn: Instant,
-    ) -> Result<PollState> {
-        let mut force_redraw = false;
-        let mut first_event_time: Option<Instant> = None;
-        let mut poll_state = PollState::Clean;
-
-        while !force_redraw && !poll_state.exit() {
-            let timeout_duration = {
-                let since_last_drawn = last_drawn.elapsed();
-                if poll_state.dirty() && since_last_drawn >= REDRAW_LATENCY {
-                    Duration::from_millis(0)
-                } else if poll_state.dirty() {
-                    REDRAW_LATENCY - since_last_drawn
-                } else {
-                    Duration::from_millis(if self.subscriptions.tickable.is_empty() {
-                        240
-                    } else {
-                        60
-                    })
-                }
-            };
-            (runtime.block_on(async {
-                tokio::select! {
-                    link_message = self.link.receiver.recv() => {
-                        poll_state = self.handle_link_message(
-                            backend,
-                            link_message.expect("At least one sender exists."),
-                        )?;
-                        Ok(())
-                    }
-                    input_event = backend.event_stream().next() => {
-                        poll_state = self.handle_input_event(input_event.expect(
-                            "At least one sender exists.",
-                        )?)?;
-                        force_redraw = poll_state.dirty()
-                            && (first_event_time.get_or_insert_with(Instant::now).elapsed()
-                                >= SUSTAINED_IO_REDRAW_LATENCY
-                                || poll_state.resized());
-                        Ok(())
-                    }
-                    _ = tokio::time::sleep(timeout_duration) => {
-                        for TickSubscription {
-                            component_id,
-                            message,
-                        } in self.subscriptions.tickable.drain(..)
-                        {
-                            poll_state = PollState::Dirty(None);
-                            match self.components.get_mut(&component_id) {
-                                Some(component) => {
-                                    component.update(message);
-                                }
-                                None => {
-                                    log::debug!(
-                                        "Received message for nonexistent component (id: {}).",
-                                        component_id,
-                                    );
-                                }
-                            }
-                        }
-                        force_redraw = true;
-                        Ok(())
-                    }
-                }
-            }) as Result<()>)?;
-        }
-
-        Ok(poll_state)
-    }
-
-    #[inline]
-    fn handle_link_message(
-        &mut self,
-        backend: &mut impl Backend,
-        message: LinkMessage,
-    ) -> Result<PollState> {
-        Ok(match message {
-            LinkMessage::Component(component_id, dyn_message) => {
-                let should_render = self
-                    .components
-                    .get_mut(&component_id)
-                    .map(|component| component.update(dyn_message))
-                    .unwrap_or_else(|| {
-                        log::debug!(
-                            "Received message for nonexistent component (id: {}).",
-                            component_id,
-                        );
-                        false
-                    });
-                if should_render {
-                    PollState::Dirty(None)
-                } else {
-                    PollState::Clean
-                }
-            }
-            LinkMessage::Exit => PollState::Exit,
-            LinkMessage::RunExclusive(process) => {
-                backend.suspend()?;
-                let maybe_message = process();
-                backend.resume()?;
-                // force_redraw = true;
-                if let Some((component_id, dyn_message)) = maybe_message {
-                    self.components
-                        .get_mut(&component_id)
-                        .map(|component| component.update(dyn_message))
-                        .unwrap_or_else(|| {
-                            log::debug!(
-                                "Received message for nonexistent component (id: {}).",
-                                component_id,
-                            );
-                            false
-                        });
-                }
-                PollState::Dirty(None)
-            }
-        })
-    }
-
-    #[inline]
-    fn handle_input_event(&mut self, event: Event) -> Result<PollState> {
-        Ok(match event {
-            Event::Key(key) => {
-                self.handle_key(key)?;
-                PollState::Dirty(None) // handle_event should return whether we need to rerender
-            }
-            Event::Resize(size) => PollState::Dirty(Some(size)),
-        })
-    }
-
-    #[inline]
-    fn handle_key(&mut self, key: Key) -> Result<()> {
-        let Self {
-            ref mut components,
-            ref subscriptions,
-            ref mut controller,
-            ..
-        } = *self;
-        let mut clear_controller = false;
-        let mut changed_focus = false;
-
-        controller.push(key);
-        for component_id in subscriptions.focused.iter() {
-            let focused_component = components
-                .get_mut(component_id)
-                .expect("A focused component should be mounted.");
-            let binding = focused_component.input_binding(&controller.keys);
-            match binding.transition {
-                BindingTransition::Continue => {}
-                BindingTransition::Clear => {
-                    clear_controller = true;
-                }
-                BindingTransition::ChangedFocus => {
-                    changed_focus = true;
-                }
-            }
-            if let Some(message) = binding.message {
-                focused_component.update(message);
-            }
-
-            // If the focus has changed we don't notify other focused components
-            // deeper in the tree.
-            if changed_focus {
-                controller.keys.clear();
-                return Ok(());
-            }
-        }
-
-        // If any component returned `BindingTransition::Clear`, we clear the controller.
-        if clear_controller {
-            controller.keys.clear();
-        }
-
-        Ok(())
-    }
-}
-
-struct LinkChannel {
-    sender: UnboundedSender<LinkMessage>,
-    receiver: UnboundedReceiver<LinkMessage>,
-}
-
-impl LinkChannel {
-    fn new() -> Self {
-        let (sender, receiver) = mpsc::unbounded_channel();
-        Self { sender, receiver }
     }
 }
 
@@ -478,24 +462,27 @@ struct TickSubscription {
     message: DynamicMessage,
 }
 
-#[derive(Debug, PartialEq)]
-enum PollState {
-    Clean,
-    Dirty(Option<Size>),
-    Exit,
-}
-
 impl PollState {
-    fn dirty(&self) -> bool {
+    pub fn dirty(&self) -> bool {
         matches!(*self, Self::Dirty(_))
     }
 
-    fn resized(&self) -> bool {
+    pub fn resized(&self) -> bool {
         matches!(*self, Self::Dirty(Some(_)))
     }
 
-    fn exit(&self) -> bool {
+    pub fn exit(&self) -> bool {
         matches!(*self, Self::Exit)
+    }
+
+    pub fn merge(&mut self, poll_state: PollState) {
+        *self = match (*self, poll_state) {
+            (Self::Exit, _) | (_, Self::Exit) => Self::Exit,
+            (Self::Clean, other) | (other, Self::Clean) => other,
+            (Self::Dirty(_), resized @ Self::Dirty(Some(_))) => resized,
+            (resized @ Self::Dirty(Some(_)), Self::Dirty(None)) => resized,
+            (Self::Dirty(None), Self::Dirty(None)) => Self::Dirty(None),
+        }
     }
 }
 
@@ -590,9 +577,6 @@ impl std::fmt::Display for InputController {
     }
 }
 
-const REDRAW_LATENCY: Duration = Duration::from_millis(10);
-const SUSTAINED_IO_REDRAW_LATENCY: Duration = Duration::from_millis(100);
-
 #[derive(Default)]
 struct DrawStatistics {
     new: usize,
@@ -613,7 +597,62 @@ impl std::fmt::Display for DrawStatistics {
 
 #[cfg(test)]
 mod tests {
-    use super::{ComponentId, DynamicMessage, LinkMessage};
+    use std::sync::mpsc;
+
+    use super::*;
+    use crate::{
+        component::ComponentExt,
+        components::text::{Text, TextProperties},
+    };
+
+    #[derive(Clone, Debug)]
+    struct MessageQueue(mpsc::Sender<ComponentMessage>);
+
+    impl MessageSender for MessageQueue {
+        fn send(&self, message: ComponentMessage) {
+            self.0.send(message).unwrap();
+        }
+
+        fn clone_box(&self) -> Box<dyn MessageSender> {
+            Box::new(self.clone())
+        }
+    }
+
+    impl MessageQueue {
+        fn new(sender: mpsc::Sender<ComponentMessage>) -> Self {
+            Self(sender)
+        }
+    }
+
+    #[test]
+    fn trivial_message_queue() {
+        let (sender, _receiver) = mpsc::channel();
+        let message_queue = MessageQueue::new(sender);
+
+        let mut app = App::new(
+            message_queue,
+            Size::new(10, 10),
+            Text::with(TextProperties::new().content("Hello")),
+        );
+
+        #[allow(clippy::never_loop)]
+        loop {
+            // Deliver component messages. This would block forever as no component
+            // sends any messages.
+            // let message = receiver
+            //     .recv_timeout(Duration::new(1, 0))
+            //     .expect_err("received an unexpected component message");
+
+            // app.handle_message(message);
+            app.handle_resize(Size::new(20, 20));
+
+            // Draw
+            let canvas = app.draw();
+            eprintln!("{}", canvas);
+
+            break;
+        }
+    }
 
     #[test]
     fn sizes() {
