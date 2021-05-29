@@ -86,7 +86,7 @@ impl<'a> TextStorage<'a> for RopeSlice<'a> {
     }
 
     fn len_graphemes(&self) -> usize {
-        grapheme_width(&self)
+        grapheme_width(self)
     }
 
     fn char_to_line(&self, char_index: CharIndex) -> LineIndex {
@@ -114,11 +114,11 @@ impl<'a> TextStorage<'a> for RopeSlice<'a> {
     }
 
     fn prev_grapheme_boundary(&self, char_index: CharIndex) -> CharIndex {
-        prev_grapheme_boundary(&self, char_index)
+        prev_grapheme_boundary(self, char_index)
     }
 
     fn next_grapheme_boundary(&self, char_index: CharIndex) -> CharIndex {
-        next_grapheme_boundary(&self, char_index)
+        next_grapheme_boundary(self, char_index)
     }
 }
 
