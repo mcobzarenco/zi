@@ -1,3 +1,10 @@
+/// Input event
+#[derive(Debug)]
+pub enum Event {
+    KeyPress(Key),
+}
+
+/// Keyboard input. It aims to match what a terminal supports.
 #[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Eq, Hash)]
 pub enum Key {
     /// Backspace.

@@ -2,8 +2,6 @@
 
 set -ex
 
-cd "$(dirname "$0")/.."
-
 cargo fmt -- --check
 cargo clippy --offline --all-targets -- -D warnings
 cargo test --offline --all-targets

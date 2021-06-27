@@ -3,7 +3,7 @@
 use unicode_width::UnicodeWidthStr;
 
 use super::Result;
-use crate::terminal::{canvas::Textel, Canvas, Position, Size, Style};
+use zi::terminal::{Canvas, Position, Size, Style, Textel};
 
 pub trait Painter {
     const INITIAL_POSITION: Position;

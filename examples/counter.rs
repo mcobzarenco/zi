@@ -5,6 +5,7 @@ use zi::{
     },
     prelude::*,
 };
+use zi_crossterm::Result;
 
 // Message type handled by the `Counter` component.
 enum Message {
@@ -93,7 +94,7 @@ const BACKGROUND: Colour = Colour::rgb(50, 48, 47);
 const FOREGROUND: Colour = Colour::rgb(213, 196, 161);
 const STYLE: Style = Style::bold(BACKGROUND, FOREGROUND);
 
-fn main() -> zi::Result<()> {
-    let mut app = App::new(Counter::with(()));
-    app.run_event_loop(zi::backend::default()?)
+fn main() -> Result<()> {
+    env_logger::init();
+    zi_crossterm::incremental()?.run_event_loop(Counter::with(()))
 }
