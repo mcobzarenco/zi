@@ -3,16 +3,16 @@ use std::{cmp, rc::Rc};
 use unicode_width::UnicodeWidthStr;
 
 use zi::{
-    backend,
     components::{
         input::{Cursor, Input, InputChange, InputProperties, InputStyle},
         select::{Select, SelectProperties},
         text::{Text, TextAlign, TextProperties},
     },
-    layout, App, BindingMatch, BindingTransition, Callback, Canvas, Colour, Component,
-    ComponentExt, ComponentLink, FlexBasis, FlexDirection, Key, Layout, Rect, Result, ShouldRender,
-    Style,
+    layout, BindingMatch, BindingTransition, Callback, Canvas, Colour, Component, ComponentExt,
+    ComponentLink, FlexBasis, FlexDirection, Key, Layout, Rect, ShouldRender, Style,
 };
+use zi_crossterm::{Crossterm, Result as CrosstermResult};
+use zi_wgpu::{GpuBackend, Result as WgpuResult};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckboxProperties {
@@ -494,8 +494,8 @@ const LOGO: &str = r#"
 
 "#;
 
-fn main() -> Result<()> {
+fn main() -> WgpuResult<()> {
     env_logger::init();
-    let mut app = App::new(TodoMvc::with(()));
-    app.run_event_loop(backend::default()?)
+    // zi_crossterm::incremental()?.run_event_loop(TodoMvc::with(()))
+    GpuBackend::new("Todo - Zi Example")?.run_event_loop(TodoMvc::with(()))
 }
