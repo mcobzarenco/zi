@@ -256,9 +256,33 @@ impl Default for Style {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Colour {
+    Default,
+    Base(BaseColor),
+    BrightBase(BaseColor),
+    Ansi(AnsiColor),
+    Rgb(RgbColor),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BaseColor {
+    Black,
+    Red,
+    Yellow,
+    Green,
+    Cyan,
+    Blue,
+    Magenta,
+    White,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AnsiColor(pub u8);
+
 /// An RGB encoded colour, 1-byte per channel.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Colour {
+pub struct RgbColor {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
@@ -268,27 +292,19 @@ impl Colour {
     /// Creates a colour from the provided RGB values.
     #[inline]
     pub const fn rgb(red: u8, green: u8, blue: u8) -> Self {
-        Self { red, green, blue }
+        Self::Rgb(RgbColor { red, green, blue })
     }
 
     /// Returns black.
     #[inline]
     pub const fn black() -> Self {
-        Self {
-            red: 0,
-            green: 0,
-            blue: 0,
-        }
+        Self::Base(BaseColor::Black)
     }
 
     /// Returns white.
     #[inline]
     pub const fn white() -> Self {
-        Self {
-            red: 255,
-            green: 255,
-            blue: 255,
-        }
+        Self::Base(BaseColor::White)
     }
 }
 

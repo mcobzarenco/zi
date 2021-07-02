@@ -1,6 +1,10 @@
 //! Terminal backend implementation using [crossterm](https://docs.rs/crossterm)
 
-use crossterm::{self, queue, QueueableCommand};
+use crossterm::{
+    self, queue,
+    style::{Colors, ResetColor, SetColors},
+    QueueableCommand,
+};
 use futures::stream::{Stream, StreamExt};
 use std::{
     io::{self, BufWriter, Stdout, Write},
@@ -12,7 +16,10 @@ use super::{
     utils::MeteredWriter,
     Backend, Event, Result,
 };
-use crate::terminal::{Canvas, Colour, Key, Size, Style};
+use crate::terminal::{
+    canvas::{BaseColor, RgbColor},
+    Canvas, Colour, Key, Size, Style,
+};
 
 /// Creates a new backend with an incremental painter. It only draws those
 /// parts of the terminal that have changed since last drawn.
@@ -137,9 +144,7 @@ fn initialise_tty<PainterT: Painter, TargetT: Write>(target: &mut TargetT) -> Re
 
 #[inline]
 fn queue_set_style(target: &mut impl Write, style: &Style) -> Result<()> {
-    use crossterm::style::{
-        Attribute, Color, SetAttribute, SetBackgroundColor, SetForegroundColor,
-    };
+    use crossterm::style::{Attribute, SetAttribute, SetBackgroundColor, SetForegroundColor};
 
     // Bold
     if style.bold {
@@ -159,33 +164,69 @@ fn queue_set_style(target: &mut impl Write, style: &Style) -> Result<()> {
         queue!(target, SetAttribute(Attribute::NoUnderline))?;
     }
 
-    // Background
-    {
-        let Colour { red, green, blue } = style.background;
-        queue!(
+    let bg_color = style.background.as_crosstem_color();
+    let fg_color = style.foreground.as_crosstem_color();
+    match (bg_color, fg_color) {
+        (None, None) => queue!(target, ResetColor),
+        (None, Some(fg)) => queue!(target, ResetColor, SetForegroundColor(fg)),
+        (Some(bg), None) => queue!(target, ResetColor, SetBackgroundColor(bg)),
+        (Some(bg), Some(fg)) => queue!(
             target,
-            SetBackgroundColor(Color::Rgb {
-                r: red,
-                g: green,
-                b: blue
+            SetColors(Colors {
+                background: Some(bg),
+                foreground: Some(fg)
             })
-        )?;
-    }
-
-    // Foreground
-    {
-        let Colour { red, green, blue } = style.foreground;
-        queue!(
-            target,
-            SetForegroundColor(Color::Rgb {
-                r: red,
-                g: green,
-                b: blue
-            })
-        )?;
-    }
+        ),
+    }?;
 
     Ok(())
+}
+
+impl BaseColor {
+    pub fn as_crossterm_base(self) -> crossterm::style::Color {
+        use crossterm::style::Color::*;
+        match self {
+            BaseColor::Black => Black,
+            BaseColor::Red => DarkRed,
+            BaseColor::Yellow => DarkYellow,
+            BaseColor::Green => DarkGreen,
+            BaseColor::Cyan => DarkCyan,
+            BaseColor::Blue => DarkBlue,
+            BaseColor::Magenta => DarkMagenta,
+            BaseColor::White => Grey,
+        }
+    }
+
+    pub fn as_crossterm_bright(self) -> crossterm::style::Color {
+        use crossterm::style::Color::*;
+        match self {
+            BaseColor::Black => DarkGrey,
+            BaseColor::Red => Red,
+            BaseColor::Yellow => Yellow,
+            BaseColor::Green => Green,
+            BaseColor::Cyan => Cyan,
+            BaseColor::Blue => Blue,
+            BaseColor::Magenta => Magenta,
+            BaseColor::White => White,
+        }
+    }
+}
+
+impl Colour {
+    pub fn as_crosstem_color(self) -> Option<crossterm::style::Color> {
+        Some(match self {
+            // Colour::Default => ResetColor,
+            Colour::Base(c) => c.as_crossterm_base(),
+            Colour::BrightBase(c) => c.as_crossterm_bright(),
+            Colour::Ansi(ansi) => crossterm::style::Color::AnsiValue(ansi.0),
+            Colour::Rgb(RgbColor { red, green, blue }) => crossterm::style::Color::Rgb {
+                r: red,
+                g: green,
+                b: blue,
+            },
+            _ => None?,
+        })
+    }
 }
 
 #[inline]
