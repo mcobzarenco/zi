@@ -4,7 +4,8 @@ use zi::{
     self, terminal::SquarePixelGrid, BindingMatch, BindingTransition, Colour, Component,
     ComponentExt, ComponentLink, Key, Layout, Rect, ShouldRender, Size, Style,
 };
-use zi_crossterm::Result;
+use zi_crossterm::{Crossterm, Result as CrosstermResult};
+use zi_wgpu::{GpuBackend, Result as WgpuResult};
 
 type Position = euclid::default::Point2D<f64>;
 
@@ -96,6 +97,7 @@ impl Mandelbrot {
             .2;
     }
 }
+
 impl Component for Mandelbrot {
     type Message = ();
     type Properties = Properties;
@@ -226,7 +228,8 @@ impl Component for Viewer {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> WgpuResult<()> {
     env_logger::init();
-    zi_crossterm::incremental()?.run_event_loop(Viewer::with(()))
+    // zi_crossterm::incremental()?.run_event_loop(TodoMvc::with(()))
+    GpuBackend::new("Zi - Mandelbrot Example")?.run_event_loop(Viewer::with(()))
 }
