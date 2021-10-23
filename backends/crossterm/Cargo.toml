@@ -6,7 +6,8 @@ description = "A terminal backend for zi using crossterm"
 readme = "README.md"
 homepage = "https://github.com/mcobzarenco/zi"
 license = "MIT OR Apache-2.0"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [dependencies]
 crossterm = { version = "0.20.0", features = ["event-stream"] }
