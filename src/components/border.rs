@@ -1,6 +1,6 @@
 use std::iter;
 
-use crate::{layout, Canvas, Component, ComponentLink, Layout, Rect, ShouldRender, Size, Style};
+use crate::{Canvas, Component, ComponentLink, Item, Layout, Rect, ShouldRender, Size, Style};
 
 #[derive(Clone)]
 pub struct BorderProperties {
@@ -118,14 +118,14 @@ impl Component for Border {
         });
 
         // Assemble layout
-        layout::column([
-            layout::fixed(1, top_border.into()),
-            layout::auto(layout::row([
-                layout::fixed(1, left_border.into()),
-                layout::auto(self.properties.component.clone()),
-                layout::fixed(1, right_border.into()),
+        Layout::column([
+            Item::fixed(1)(top_border),
+            Item::auto(Layout::row([
+                Item::fixed(1)(left_border),
+                Item::auto(self.properties.component.clone()),
+                Item::fixed(1)(right_border),
             ])),
-            layout::fixed(1, bottom_border.into()),
+            Item::fixed(1)(bottom_border),
         ])
     }
 }

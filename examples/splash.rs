@@ -2,8 +2,8 @@ use std::cmp;
 use unicode_width::UnicodeWidthStr;
 use zi::{
     components::border::{Border, BorderProperties},
-    layout, BindingMatch, BindingTransition, Canvas, Colour, Component, ComponentExt,
-    ComponentLink, Key, Layout, Rect, ShouldRender, Size, Style,
+    BindingMatch, BindingTransition, Canvas, Colour, Component, ComponentExt, ComponentLink, Key,
+    Layout, Rect, ShouldRender, Size, Style,
 };
 use zi_crossterm::Result;
 
@@ -30,7 +30,7 @@ impl Default for Theme {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct Properties {
+struct SplashProperties {
     theme: Theme,
     logo: String,
     tagline: String,
@@ -46,13 +46,13 @@ fn text_block_size(text: &str) -> Size {
 
 #[derive(Debug)]
 struct Splash {
-    properties: Properties,
+    properties: SplashProperties,
     frame: Rect,
 }
 
 impl Component for Splash {
     type Message = usize;
-    type Properties = Properties;
+    type Properties = SplashProperties;
 
     fn create(properties: Self::Properties, frame: Rect, _link: ComponentLink<Self>) -> Self {
         Self { properties, frame }
@@ -112,12 +112,12 @@ impl Component for Splash {
 }
 
 #[derive(Debug)]
-struct SplashGrid {
+struct SplashScreen {
     theme: Theme,
     link: ComponentLink<Self>,
 }
 
-impl Component for SplashGrid {
+impl Component for SplashScreen {
     type Message = usize;
     type Properties = ();
 
@@ -129,18 +129,17 @@ impl Component for SplashGrid {
     }
 
     fn view(&self) -> Layout {
-        layout::component::<Border>(
-            BorderProperties::new(layout::column([layout::auto(layout::component::<Splash>(
-                Properties {
-                    theme: self.theme.clone(),
-                    logo: SPLASH_LOGO.into(),
-                    tagline: SPLASH_TAGLINE.into(),
-                    credits: SPLASH_CREDITS.into(),
-                    offset: 0,
-                },
-            ))]))
-            .style(self.theme.credits),
-        )
+        // Instantiate our "splash screen" component
+        let splash = Splash::with(SplashProperties {
+            theme: self.theme.clone(),
+            logo: SPLASH_LOGO.into(),
+            tagline: SPLASH_TAGLINE.into(),
+            credits: SPLASH_CREDITS.into(),
+            offset: 0,
+        });
+
+        // Adding a border
+        Border::with(BorderProperties::new(splash).style(self.theme.credits))
     }
 
     fn has_focus(&self) -> bool {
@@ -182,5 +181,5 @@ const SPLASH_CREDITS: &str = "C-x C-c to quit";
 
 fn main() -> Result<()> {
     env_logger::init();
-    zi_crossterm::incremental()?.run_event_loop(SplashGrid::with(()))
+    zi_crossterm::incremental()?.run_event_loop(SplashScreen::with(()))
 }

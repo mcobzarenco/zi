@@ -2,8 +2,8 @@ use std::{cmp, iter};
 
 use super::text::{Text, TextProperties};
 use crate::{
-    layout, BindingMatch, BindingTransition, Callback, Component, ComponentLink, FlexDirection,
-    Item, Key, Layout, Rect, ShouldRender, Style,
+    BindingMatch, BindingTransition, Callback, Component, ComponentExt, ComponentLink,
+    FlexDirection, Item, Key, Layout, Rect, ShouldRender, Style,
 };
 
 #[derive(Clone, PartialEq)]
@@ -120,12 +120,12 @@ impl Component for Select {
 
         if self.properties.item_size * num_visible_items < self.frame.size.height {
             // "Filler" component for the unused space
-            let filler = iter::once(layout::auto(layout::component::<Text>(
+            let spacer = iter::once(Item::auto(Text::with(
                 TextProperties::new().style(self.properties.background),
             )));
-            layout::container_iter(self.properties.direction, items.chain(filler))
+            Layout::container(self.properties.direction, items.chain(spacer))
         } else {
-            layout::container_iter(self.properties.direction, items)
+            Layout::container(self.properties.direction, items)
         }
     }
 

@@ -8,8 +8,8 @@ use zi::{
         select::{Select, SelectProperties},
         text::{Text, TextAlign, TextProperties},
     },
-    layout, BindingMatch, BindingTransition, Callback, Canvas, Colour, Component, ComponentExt,
-    ComponentLink, FlexBasis, FlexDirection, Key, Layout, Rect, ShouldRender, Style,
+    BindingMatch, BindingTransition, Callback, Canvas, Colour, Component, ComponentExt,
+    ComponentLink, FlexDirection, Item, Key, Layout, Rect, ShouldRender, Style,
 };
 use zi_crossterm::Result;
 
@@ -19,6 +19,7 @@ pub struct CheckboxProperties {
     pub checked: bool,
 }
 
+/// A simple component displaying a checkbox
 #[derive(Debug)]
 pub struct Checkbox {
     properties: CheckboxProperties,
@@ -177,15 +178,12 @@ impl Component for Todo {
         };
 
         let checkbox_width = UnicodeWidthStr::width(if checked { CHECKED } else { UNCHECKED });
-        layout::row([
-            layout::fixed(
-                checkbox_width,
-                Checkbox::with(CheckboxProperties {
-                    style: content_style,
-                    checked,
-                }),
-            ),
-            layout::auto(todo_component),
+        Layout::row([
+            Item::fixed(checkbox_width)(Checkbox::with(CheckboxProperties {
+                style: content_style,
+                checked,
+            })),
+            Item::auto(todo_component),
         ])
     }
 }
@@ -372,18 +370,16 @@ impl Component for TodoMvc {
         let num_left = todos.iter().filter(|item| !item.checked).count();
 
         // Title component
-        let title = Text::item_with_key(
-            FlexBasis::Fixed(LOGO.lines().count() + 1),
+        let title = Item::fixed(LOGO.lines().count() + 1)(Text::with_key(
             "title",
             TextProperties::new()
                 .content(LOGO)
                 .style(theme.checked)
                 .align(TextAlign::Centre),
-        );
+        ));
 
         // The list of todo items
-        let todo_items = Select::item_with_key(
-            FlexBasis::Auto,
+        let todo_items = Item::auto(Select::with_key(
             "select",
             SelectProperties {
                 background: theme.unchecked,
@@ -397,8 +393,7 @@ impl Component for TodoMvc {
                     (move |index| {
                         let item: &TodoItem = &todos[index];
                         let link = link.clone();
-                        Todo::item_with_key(
-                            FlexBasis::Fixed(1),
+                        Item::fixed(1)(Todo::with_key(
                             item.id,
                             TodoProperties {
                                 content_style: if focus_index == index && !editing {
@@ -417,7 +412,7 @@ impl Component for TodoMvc {
                                 })
                                 .into(),
                             },
-                        )
+                        ))
                     })
                     .into()
                 },
@@ -425,11 +420,10 @@ impl Component for TodoMvc {
                 focused: true,
                 on_change: Some(link.callback(Message::FocusItem)),
             },
-        );
+        ));
 
         // Status bar at the bottom counting how many items have been ticked off
-        let status_bar = Text::item_with_key(
-            FlexBasis::Fixed(1),
+        let status_bar = Item::fixed(1)(Text::with_key(
             "status-bar",
             TextProperties::new()
                 .content(format!(
@@ -440,9 +434,9 @@ impl Component for TodoMvc {
                     todos.len() - num_left
                 ))
                 .style(theme.checked),
-        );
+        ));
 
-        layout::column([title, todo_items, status_bar])
+        Layout::column([title, todo_items, status_bar])
     }
 
     fn has_focus(&self) -> bool {

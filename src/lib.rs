@@ -10,11 +10,17 @@
 //! independent of the components, the terminal backend will incrementally
 //! redraw only those parts of the screen that have changed.
 //!
+//!
 //! # A Basic Example
 //!
 //! The following is a complete example of a Zi application which implements a
 //! counter. It should provide a good sample of the different
 //! [`Component`](trait.Component.html) methods and how they fit together.
+//!
+//! A slightly more complex version which includes styling can be found at
+//! `examples/counter.rs`.
+//!
+//! ![zi-counter-example](https://user-images.githubusercontent.com/797170/137802270-0a4a50af-1fd5-473f-a52c-9d3a107809d0.gif)
 //!
 //! Anyone familiar with Yew, Elm or React + Redux should be familiar with all
 //! the high-level concepts. Moreover, the names of some types and functions are
@@ -70,14 +76,14 @@
 //!     }
 //!
 //!     // Returns the current visual layout of the component.
+//!     //  - The `Border` component wraps a component and draws a border around it.
+//!     //  - The `Text` component displays some text.
 //!     fn view(&self) -> Layout {
-//!         layout::component::<Border>(
-//!             BorderProperties::new(layout::component::<Text>(
-//!                 TextProperties::new()
-//!                     .align(TextAlign::Centre)
-//!                     .content(format!("Counter: {}", self.count)),
-//!             ))
-//!         )
+//!         Border::with(BorderProperties::new(Text::with(
+//!             TextProperties::new()
+//!                 .align(TextAlign::Centre)
+//!                 .content(format!("Counter: {}", self.count)),
+//!         )))
 //!     }
 //!
 //!     // Components handle messages in their `update` method and commonly use this
@@ -123,21 +129,18 @@ pub mod components;
 pub mod terminal;
 
 pub use component::{
-    layout::{
-        self, auto, column, component, container, fixed, row, ComponentExt, ComponentKey,
-        FlexBasis, FlexDirection, Item,
-    },
+    layout::{self, ComponentExt, ComponentKey, Container, FlexBasis, FlexDirection, Item},
     BindingMatch, BindingTransition, Callback, Component, ComponentLink, Layout, ShouldRender,
 };
 pub use terminal::{Background, Canvas, Colour, Foreground, Key, Position, Rect, Size, Style};
 
 pub mod prelude {
     //! The Zi prelude.
-    pub use super::{
-        layout, BindingMatch, BindingTransition, Component, ComponentExt, ComponentLink, Layout,
-        ShouldRender,
-    };
     pub use super::{Background, Canvas, Colour, Foreground, Key, Position, Rect, Size, Style};
+    pub use super::{
+        BindingMatch, BindingTransition, Component, ComponentExt, ComponentLink, Container,
+        FlexBasis, FlexDirection, Item, Layout, ShouldRender,
+    };
 }
 
 // Crate only modules
