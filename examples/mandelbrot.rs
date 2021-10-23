@@ -1,7 +1,7 @@
 use num_complex::Complex;
 use rayon::{iter::ParallelExtend, prelude::*};
 use zi::{
-    self, layout, terminal::SquarePixelGrid, BindingMatch, BindingTransition, Colour, Component,
+    self, terminal::SquarePixelGrid, BindingMatch, BindingTransition, Colour, Component,
     ComponentExt, ComponentLink, Key, Layout, Rect, ShouldRender, Size, Style,
 };
 use zi_crossterm::Result;
@@ -190,7 +190,7 @@ impl Component for Viewer {
     }
 
     fn view(&self) -> Layout {
-        layout::component::<Mandelbrot>(Properties {
+        Mandelbrot::with(Properties {
             position: self.position,
             scale: self.scale,
         })
