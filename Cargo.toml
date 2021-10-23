@@ -1,6 +1,6 @@
 [package]
 name = "zi"
-version = "0.3.0"
+version = "0.2.0"
 authors = ["Marius Cobzarenco <marius@reinfer.io>"]
 description = "A declarative library for building monospace user interfaces"
 readme = "README.md"
@@ -25,7 +25,7 @@ env_logger = "0.8.4"
 num-complex = "0.4.0"
 rayon = "1.5.1"
 
-zi-crossterm = { version = "0.3.0", path = "backends/crossterm" }
+zi-crossterm = { version = "0.2.0", path = "backends/crossterm" }
 
 [[bench]]
 name = "senders"
