@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
     - name: Install latest stable Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -22,6 +21,7 @@ jobs:
         toolchain: stable
         override: true
         components: rustfmt, clippy
+    - uses: actions/checkout@v2
     - name: Build
       run: ./scripts/build
     - name: Run tests
@@ -31,7 +31,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
     - name: Install latest stable Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -39,6 +38,7 @@ jobs:
         toolchain: stable
         override: true
         components: rustfmt, clippy
+    - uses: actions/checkout@v2
     - name: Build
       run: cd backends/crossterm && ../../scripts/build
     - name: Run tests
