@@ -1,0 +1,19 @@
+[package]
+name = "zi"
+version = "0.2.0"
+authors = ["Marius Cobzarenco <marius@reinfer.io>"]
+description = "A declarative library for building monospace user interfaces"
+readme = "README.md"
+homepage = "https://github.com/mcobzarenco/zi"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.56"
+
+[dependencies]
+euclid = "0.22.6"
+log = "0.4.14"
+ropey = "1.3.1"
+smallstr = "0.2.0"
+smallvec = "1.6.1"
+unicode-segmentation = "1.8.0"
+unicode-width = "0.1.8"

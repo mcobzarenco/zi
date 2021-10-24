@@ -11,7 +11,7 @@ use zi::{
     BindingMatch, BindingTransition, Callback, Canvas, Colour, Component, ComponentExt,
     ComponentLink, FlexDirection, Item, Key, Layout, Rect, ShouldRender, Style,
 };
-use zi_crossterm::Result;
+use zi_term::Result;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckboxProperties {
@@ -489,5 +489,5 @@ const LOGO: &str = r#"
 
 fn main() -> Result<()> {
     env_logger::init();
-    zi_crossterm::incremental()?.run_event_loop(TodoMvc::with(()))
+    zi_term::incremental()?.run_event_loop(TodoMvc::with(()))
 }

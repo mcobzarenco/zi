@@ -1,0 +1,42 @@
+[package]
+name = "zi-examples"
+version = "0.2.0"
+authors = ["Marius Cobzarenco <marius@reinfer.io>"]
+description = "Counter example for zi"
+homepage = "https://github.com/mcobzarenco/zi"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.56"
+
+[dependencies]
+colorous = "1.0.5"
+criterion = { version = "0.3.4", features = ["html_reports"] }
+env_logger = "0.8.4"
+euclid = "0.22.6"
+num-complex = "0.4.0"
+rayon = "1.5.1"
+ropey = "1.3.1"
+unicode-width = "0.1.8"
+
+zi = { path = "../zi" }
+zi-term = { path = "../zi-term" }
+
+[lib]
+name = "zi_examples_lib"
+path = "lib.rs"
+
+[[example]]
+name = "counter"
+path = "counter.rs"
+
+[[example]]
+name = "mandelbrot"
+path = "mandelbrot.rs"
+
+[[example]]
+name = "splash"
+path = "splash.rs"
+
+[[example]]
+name = "todo"
+path = "todo.rs"

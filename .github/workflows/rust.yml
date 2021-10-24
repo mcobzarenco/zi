@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-zi:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,22 +24,5 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: ./scripts/build
-    - name: Run tests
+    - name: Run checks
       run: ./scripts/check
-
-  build-zi-crossterm:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Install latest stable Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cd backends/crossterm && ../../scripts/build
-    - name: Run tests
-      run: cd backends/crossterm && ../../scripts/check

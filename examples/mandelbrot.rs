@@ -4,7 +4,7 @@ use zi::{
     self, terminal::SquarePixelGrid, BindingMatch, BindingTransition, Colour, Component,
     ComponentExt, ComponentLink, Key, Layout, Rect, ShouldRender, Size, Style,
 };
-use zi_crossterm::Result;
+use zi_term::Result;
 
 type Position = euclid::default::Point2D<f64>;
 
@@ -228,5 +228,5 @@ impl Component for Viewer {
 
 fn main() -> Result<()> {
     env_logger::init();
-    zi_crossterm::incremental()?.run_event_loop(Viewer::with(()))
+    zi_term::incremental()?.run_event_loop(Viewer::with(()))
 }

@@ -1,14 +1,14 @@
-name: Publish
+name: Publish zi-term
 
 on:
   push:
-    tags: v*
+    tags: zi-term-v*
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  publish:
+  publish-zi-term:
     runs-on: ubuntu-latest
     steps:
       - name: Install latest stable Rust
@@ -28,9 +28,10 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build
         run: ./scripts/build
-      - name: Run tests
+      - name: Run checks
         run: ./scripts/check
-      - name: Publish Crates
+      - name: Publish zi-term crate
         run: |
+          cd zi-term
           cargo login ${{ secrets.CRATES_IO_TOKEN }}
           cargo publish

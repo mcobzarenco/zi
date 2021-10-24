@@ -1,4 +1,8 @@
 # Unreleased
+
+# v0.2.0
+## Breaking
+
  - Simplifies the public layout API functions and dealing with array of
    components (latter thanks to const generics). In particular:
    - The free functions `row`, `row_reverse`, `column`, `column_reverse`,
