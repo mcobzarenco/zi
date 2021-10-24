@@ -5,7 +5,7 @@ use zi::{
     BindingMatch, BindingTransition, Canvas, Colour, Component, ComponentExt, ComponentLink, Key,
     Layout, Rect, ShouldRender, Size, Style,
 };
-use zi_crossterm::Result;
+use zi_term::Result;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Theme {
@@ -181,5 +181,5 @@ const SPLASH_CREDITS: &str = "C-x C-c to quit";
 
 fn main() -> Result<()> {
     env_logger::init();
-    zi_crossterm::incremental()?.run_event_loop(SplashScreen::with(()))
+    zi_term::incremental()?.run_event_loop(SplashScreen::with(()))
 }

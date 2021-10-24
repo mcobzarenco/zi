@@ -35,8 +35,8 @@ use zi::{
 /// ```no_run
 /// # use zi::prelude::*;
 /// # use zi::components::text::{Text, TextProperties};
-/// fn main() -> zi_crossterm::Result<()> {
-///     zi_crossterm::incremental()?
+/// fn main() -> zi_term::Result<()> {
+///     zi_term::incremental()?
 ///         .run_event_loop(Text::with(TextProperties::new().content("Hello, world!")))
 /// }
 /// ```
@@ -50,8 +50,8 @@ pub fn incremental() -> Result<Crossterm<IncrementalPainter>> {
 /// ```no_run
 /// # use zi::prelude::*;
 /// # use zi::components::text::{Text, TextProperties};
-/// fn main() -> zi_crossterm::Result<()> {
-///     zi_crossterm::full()?
+/// fn main() -> zi_term::Result<()> {
+///     zi_term::full()?
 ///         .run_event_loop(Text::with(TextProperties::new().content("Hello, world!")))
 /// }
 /// ```
@@ -65,8 +65,8 @@ pub fn full() -> Result<Crossterm<FullPainter>> {
 /// ```no_run
 /// # use zi::prelude::*;
 /// # use zi::components::text::{Text, TextProperties};
-/// fn main() -> zi_crossterm::Result<()> {
-///     zi_crossterm::incremental()?
+/// fn main() -> zi_term::Result<()> {
+///     zi_term::incremental()?
 ///         .run_event_loop(Text::with(TextProperties::new().content("Hello, world!")))
 /// }
 /// ```
@@ -106,8 +106,8 @@ impl<PainterT: Painter> Crossterm<PainterT> {
     /// ```no_run
     /// # use zi::prelude::*;
     /// # use zi::components::text::{Text, TextProperties};
-    /// fn main() -> zi_crossterm::Result<()> {
-    ///     zi_crossterm::incremental()?
+    /// fn main() -> zi_term::Result<()> {
+    ///     zi_term::incremental()?
     ///         .run_event_loop(Text::with(TextProperties::new().content("Hello, world!")))
     /// }
     /// ```

@@ -26,7 +26,7 @@
 //! the high-level concepts. Moreover, the names of some types and functions are
 //! the same as in `Yew`.
 //!
-//! ```no_run
+//! ```ignore
 //! use zi::{
 //!     components::{
 //!         border::{Border, BorderProperties},
@@ -34,7 +34,7 @@
 //!     },
 //!     prelude::*,
 //! };
-//! use zi_crossterm::Result;
+//! use zi_term::Result;
 //!
 //!
 //! // Message type handled by the `Counter` component.
@@ -116,8 +116,8 @@
 //!     }
 //! }
 //!
-//! fn main() -> zi_crossterm::Result<()> {
-//!   zi_crossterm::incremental()?.run_event_loop(Counter::with(()))
+//! fn main() -> zi_term::Result<()> {
+//!   zi_term::incremental()?.run_event_loop(Counter::with(()))
 //! }
 //! ```
 //!

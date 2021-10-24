@@ -1,5 +1,5 @@
 [package]
-name = "zi-crossterm"
+name = "zi-term"
 version = "0.2.0"
 authors = ["Marius Cobzarenco <marius@reinfer.io>"]
 description = "A terminal backend for zi using crossterm"
@@ -16,4 +16,5 @@ log = "0.4.14"
 thiserror = "1.0.26"
 tokio = { version = "1.8.1", features = ["io-util", "macros", "rt", "sync", "time"] }
 unicode-width = "0.1.8"
-zi = { version = "0.2.0", path = "../.." }
+
+zi = { version = "0.2.0", path = "../zi" }

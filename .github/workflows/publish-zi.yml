@@ -1,0 +1,37 @@
+name: Publish zi
+
+on:
+  push:
+    tags: zi-v*
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish-zi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install latest stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build
+        run: ./scripts/build
+      - name: Run checks
+        run: ./scripts/check
+      - name: Publish zi crate
+        run: |
+          cd zi
+          cargo login ${{ secrets.CRATES_IO_TOKEN }}
+          cargo publish
