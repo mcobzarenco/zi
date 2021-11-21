@@ -198,7 +198,7 @@ impl<PainterT: Painter> Crossterm<PainterT> {
                 } else if app.poll_state().dirty() {
                     REDRAW_LATENCY - since_last_drawn
                 } else {
-                    Duration::from_millis(if app.is_tickable() { 60 } else { 240 })
+                    Duration::from_millis(if app.is_tickable() { 60 } else { 60_000 })
                 }
             };
             (runtime.block_on(async {
