@@ -68,12 +68,6 @@ pub(crate) struct DynamicMessage(pub(crate) Box<dyn Any + Send + 'static>);
 pub(crate) struct DynamicProperties(Box<dyn Any>);
 pub(crate) struct DynamicTemplate(pub(crate) Box<dyn Template>);
 
-impl Clone for DynamicTemplate {
-    fn clone(&self) -> Self {
-        self.0.clone()
-    }
-}
-
 impl Deref for DynamicTemplate {
     type Target = dyn Template;
 
@@ -174,22 +168,11 @@ pub(crate) trait Template {
     ) -> Box<dyn Renderable + 'static>;
 
     fn dynamic_properties(&mut self) -> DynamicProperties;
-
-    fn clone(&self) -> DynamicTemplate;
 }
 
 pub(crate) struct ComponentDef<ComponentT: Component> {
     pub key: Option<ComponentKey>,
     pub properties: Option<ComponentT::Properties>,
-}
-
-impl<ComponentT: Component> Clone for ComponentDef<ComponentT> {
-    fn clone(&self) -> Self {
-        Self {
-            key: self.key,
-            properties: self.properties.clone(),
-        }
-    }
 }
 
 impl<ComponentT: Component> ComponentDef<ComponentT> {
@@ -237,10 +220,5 @@ impl<ComponentT: Component> Template for ComponentDef<ComponentT> {
     #[inline]
     fn dynamic_properties(&mut self) -> DynamicProperties {
         DynamicProperties(Box::new(self.properties_unwrap()))
-    }
-
-    #[inline]
-    fn clone(&self) -> DynamicTemplate {
-        DynamicTemplate(Box::new(Clone::clone(self)))
     }
 }

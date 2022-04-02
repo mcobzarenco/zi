@@ -83,7 +83,6 @@ impl From<&str> for ComponentKey {
 ///      [`Container`](./Container).
 ///   3. A canvas which corresponds to the raw content in a region, represented
 ///      by [`Canvas`](./Canvas).
-#[derive(Clone)]
 pub struct Layout(pub(crate) LayoutNode);
 
 impl Layout {
@@ -150,7 +149,6 @@ impl Layout {
     }
 }
 
-#[derive(Clone)]
 pub(crate) enum LayoutNode {
     Container(Box<Container>),
     Component(DynamicTemplate),
@@ -221,7 +219,6 @@ const ITEMS_INLINE_SIZE: usize = 4;
 type Items = SmallVec<[Item; ITEMS_INLINE_SIZE]>;
 
 /// A flex container with a specified direction and items.
-#[derive(Clone)]
 pub struct Container {
     children: Items,
     direction: FlexDirection,
@@ -338,7 +335,6 @@ impl From<Container> for Layout {
 /// An `Item` consists of a `Layout` and an associated `FlexBasis`. The latter
 /// specifies how much space the layout should take along the main axis of the
 /// container.
-#[derive(Clone)]
 pub struct Item {
     node: Layout,
     flex: FlexBasis,

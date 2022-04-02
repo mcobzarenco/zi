@@ -43,15 +43,18 @@ impl Component for Counter {
 
     // Returns the current visual layout of the component.
     fn view(&self) -> Layout {
-        let text = Text::with(
-            TextProperties::new()
-                .align(TextAlign::Centre)
-                .style(STYLE)
-                .content(format!(
-                    "\nCounter: {:>3}  [+ to increment | - to decrement | C-c to exit]",
-                    self.count
-                )),
-        );
+        let count = self.count;
+        let text = move || {
+            Text::with(
+                TextProperties::new()
+                    .align(TextAlign::Centre)
+                    .style(STYLE)
+                    .content(format!(
+                        "\nCounter: {:>3}  [+ to increment | - to decrement | C-c to exit]",
+                        count
+                    )),
+            )
+        };
         Border::with(BorderProperties::new(text).style(STYLE))
     }
 

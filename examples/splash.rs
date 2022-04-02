@@ -130,13 +130,16 @@ impl Component for SplashScreen {
 
     fn view(&self) -> Layout {
         // Instantiate our "splash screen" component
-        let splash = Splash::with(SplashProperties {
-            theme: self.theme.clone(),
-            logo: SPLASH_LOGO.into(),
-            tagline: SPLASH_TAGLINE.into(),
-            credits: SPLASH_CREDITS.into(),
-            offset: 0,
-        });
+        let theme = self.theme.clone();
+        let splash = move || {
+            Splash::with(SplashProperties {
+                theme: theme.clone(),
+                logo: SPLASH_LOGO.into(),
+                tagline: SPLASH_TAGLINE.into(),
+                credits: SPLASH_CREDITS.into(),
+                offset: 0,
+            })
+        };
 
         // Adding a border
         Border::with(BorderProperties::new(splash).style(self.theme.credits))

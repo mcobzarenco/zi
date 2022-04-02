@@ -46,7 +46,7 @@ pub trait Component: Sized + 'static {
     type Message: Send + 'static;
 
     /// Properties are the inputs to a Component.
-    type Properties: Clone;
+    type Properties;
 
     /// Components are created with three pieces of data:
     ///   - their Properties

@@ -1,19 +1,20 @@
 use std::iter;
 
-use crate::{Canvas, Component, ComponentLink, Item, Layout, Rect, ShouldRender, Size, Style};
+use crate::{
+    Callback, Canvas, Component, ComponentLink, Item, Layout, Rect, ShouldRender, Size, Style,
+};
 
-#[derive(Clone)]
 pub struct BorderProperties {
-    pub component: Layout,
+    pub component: Callback<(), Layout>,
     pub style: Style,
     pub stroke: BorderStroke,
     pub title: Option<(String, Style)>,
 }
 
 impl BorderProperties {
-    pub fn new(component: Layout) -> Self {
+    pub fn new(component: impl Fn() -> Layout + 'static) -> Self {
         Self {
-            component,
+            component: (move |_| component()).into(),
             style: Style::default(),
             stroke: BorderStroke::default(),
             title: None,
@@ -122,7 +123,7 @@ impl Component for Border {
             Item::fixed(1)(top_border),
             Item::auto(Layout::row([
                 Item::fixed(1)(left_border),
-                Item::auto(self.properties.component.clone()),
+                Item::auto(self.properties.component.emit(())),
                 Item::fixed(1)(right_border),
             ])),
             Item::fixed(1)(bottom_border),
