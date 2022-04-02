@@ -2,33 +2,11 @@ use num_complex::Complex;
 use rayon::{iter::ParallelExtend, prelude::*};
 use zi::{
     self, terminal::SquarePixelGrid, BindingMatch, BindingTransition, Colour, Component,
-    ComponentExt, ComponentLink, Key, Layout, Rect, ShouldRender, Size, Style,
+    ComponentExt, ComponentLink, Key, Layout, Rect, ShouldRender, Size,
 };
 use zi_term::Result;
 
 type Position = euclid::default::Point2D<f64>;
-
-#[derive(Clone, Debug)]
-struct Theme {
-    logo: Style,
-    tagline: Style,
-    credits: Style,
-}
-
-const DARK0_SOFT: Colour = Colour::rgb(50, 48, 47);
-const LIGHT2: Colour = Colour::rgb(213, 196, 161);
-const GRAY_245: Colour = Colour::rgb(146, 131, 116);
-const BRIGHT_BLUE: Colour = Colour::rgb(131, 165, 152);
-
-impl Default for Theme {
-    fn default() -> Self {
-        Self {
-            logo: Style::normal(DARK0_SOFT, LIGHT2),
-            tagline: Style::normal(DARK0_SOFT, BRIGHT_BLUE),
-            credits: Style::normal(DARK0_SOFT, GRAY_245),
-        }
-    }
-}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Properties {
@@ -153,7 +131,6 @@ enum Message {
 
 #[derive(Debug)]
 struct Viewer {
-    theme: Theme,
     position: Position,
     scale: f64,
     link: ComponentLink<Self>,
@@ -165,7 +142,6 @@ impl Component for Viewer {
 
     fn create(_properties: Self::Properties, _frame: Rect, link: ComponentLink<Self>) -> Self {
         Self {
-            theme: Default::default(),
             position: Position::new(-1.0, -1.0),
             scale: 0.01,
             link,
