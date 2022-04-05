@@ -120,7 +120,7 @@ impl Canvas {
             }
 
             let grapheme = grapheme.into();
-            let grapheme_width = UnicodeWidthStr::width(grapheme.as_ref());
+            let grapheme_width = grapheme.width();
             if grapheme_width == 0 {
                 continue;
             }
