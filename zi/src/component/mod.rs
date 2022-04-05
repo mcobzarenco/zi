@@ -1,24 +1,24 @@
 //! Defines the `Component` trait and related types.
-
+pub mod bindings;
 pub mod layout;
 pub(crate) mod template;
 
 pub use self::layout::{ComponentExt, Layout};
 
-use smallvec::SmallVec;
 use std::{
     any::{self, TypeId},
-    cmp::Ordering,
-    collections::hash_map::HashMap,
     fmt,
     marker::PhantomData,
     rc::Rc,
 };
 
-use self::template::{ComponentId, DynamicMessage};
+use self::{
+    bindings::Bindings,
+    template::{ComponentId, DynamicMessage},
+};
 use crate::{
     app::{ComponentMessage, MessageSender},
-    terminal::{Key, Rect},
+    terminal::Rect,
 };
 
 /// Components are the building blocks of the UI in Zi.
@@ -85,19 +85,12 @@ pub trait Component: Sized + 'static {
         ShouldRender::No
     }
 
-    /// Whether the component is currently focused.
-    fn has_focus(&self) -> bool {
-        false
-    }
-
-    /// If the component is currently focused (see `has_focus`), `input_binding`
-    /// will be called on every keyboard events.
-    fn input_binding(&self, _pressed: &[Key]) -> BindingMatch<Self::Message> {
-        BindingMatch {
-            transition: BindingTransition::Clear,
-            message: None,
-        }
-    }
+    /// Updates the key bindings of the component.
+    ///
+    /// This method will be called after the component lifecycle methods. It is
+    /// used to specify how to react in response to keyboard events, typically
+    /// by sending a message.
+    fn bindings(&self, _bindings: &mut Bindings<Self>) {}
 
     fn tick(&self) -> Option<Self::Message> {
         None
@@ -184,8 +177,6 @@ impl<ComponentT: Component> ComponentLink<ComponentT> {
             self.component_id,
             DynamicMessage(Box::new(message)),
         )));
-        // .map_err(|_| ()) // tokio's SendError doesn't implement Debug
-        // .expect("App receiver needs to outlive senders for inter-component messages");
     }
 
     /// Creates a `Callback` which will send a message to the linked component's
@@ -205,8 +196,6 @@ impl<ComponentT: Component> ComponentLink<ComponentT> {
     /// exiting.
     pub fn exit(&self) {
         self.sender.send(ComponentMessage(LinkMessage::Exit));
-        // .map_err(|_| ()) // tokio's SendError doesn't implement Debug
-        // .expect("App needs to outlive components");
     }
 
     pub(crate) fn new(sender: Box<dyn MessageSender>, component_id: ComponentId) -> Self {
@@ -252,28 +241,6 @@ impl From<bool> for ShouldRender {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BindingTransition {
-    Continue,
-    Clear,
-    ChangedFocus,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BindingMatch<Message> {
-    pub transition: BindingTransition,
-    pub message: Option<Message>,
-}
-
-impl<Message> BindingMatch<Message> {
-    pub fn clear(message: impl Into<Option<Message>>) -> Self {
-        Self {
-            transition: BindingTransition::Clear,
-            message: message.into(),
-        }
-    }
-}
-
 pub(crate) enum LinkMessage {
     Component(ComponentId, DynamicMessage),
     Exit,
@@ -289,47 +256,6 @@ impl std::fmt::Debug for LinkMessage {
                 id, &*message.0 as *const _
             ),
             Self::Exit => write!(formatter, "Exit"),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct _HashBindings<Action>(HashMap<SmallVec<[Key; 2]>, Action>);
-
-impl<Message> _HashBindings<Message> {
-    pub fn _new(map: HashMap<SmallVec<[Key; 2]>, Message>) -> Self {
-        Self(map)
-    }
-}
-
-impl<Message: Clone> _HashBindings<Message> {
-    pub fn _input_binding(&self, pressed: &[Key]) -> BindingMatch<Message> {
-        for (binding, message) in self.0.iter() {
-            let is_match = binding
-                .iter()
-                .zip(pressed.iter())
-                .all(|(lhs, rhs)| *lhs == *rhs);
-            if is_match {
-                match pressed.len().cmp(&binding.len()) {
-                    Ordering::Less => {
-                        return BindingMatch {
-                            transition: BindingTransition::Continue,
-                            message: None,
-                        };
-                    }
-                    Ordering::Equal => {
-                        return BindingMatch {
-                            transition: BindingTransition::Clear,
-                            message: Some(message.clone()),
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        BindingMatch {
-            transition: BindingTransition::Clear,
-            message: None,
         }
     }
 }

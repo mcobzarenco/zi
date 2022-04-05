@@ -2,8 +2,7 @@ use std::cmp;
 use unicode_width::UnicodeWidthStr;
 use zi::{
     components::border::{Border, BorderProperties},
-    BindingMatch, BindingTransition, Canvas, Colour, Component, ComponentExt, ComponentLink, Key,
-    Layout, Rect, ShouldRender, Size, Style,
+    prelude::*,
 };
 use zi_term::Result;
 
@@ -36,12 +35,6 @@ struct SplashProperties {
     tagline: String,
     credits: String,
     offset: usize,
-}
-
-fn text_block_size(text: &str) -> Size {
-    let width = text.lines().map(UnicodeWidthStr::width).max().unwrap_or(0);
-    let height = text.lines().count();
-    Size::new(width, height)
 }
 
 #[derive(Debug)]
@@ -145,28 +138,31 @@ impl Component for SplashScreen {
         Border::with(BorderProperties::new(splash).style(self.theme.credits))
     }
 
-    fn has_focus(&self) -> bool {
-        true
-    }
-
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
-        let mut transition = BindingTransition::Clear;
-        let message = match pressed {
-            [Key::Ctrl('x'), Key::Ctrl('c')] => {
-                self.link.exit();
-                None
-            }
-            [Key::Ctrl('x')] => {
-                transition = BindingTransition::Continue;
-                None
-            }
-            _ => None,
-        };
-        BindingMatch {
-            transition,
-            message,
+    fn bindings(&self, bindings: &mut Bindings<Self>) {
+        // If we already initialised the bindings, nothing to do -- they never
+        // change in this example
+        if !bindings.is_empty() {
+            return;
         }
+        // Set focus to `true` in order to react to key presses
+        bindings.set_focus(true);
+
+        // Only one binding, for exiting
+        bindings.add("exit", [Key::Ctrl('x'), Key::Ctrl('c')], |this: &Self| {
+            this.link.exit()
+        });
     }
+}
+
+fn text_block_size(text: &str) -> Size {
+    let width = text.lines().map(UnicodeWidthStr::width).max().unwrap_or(0);
+    let height = text.lines().count();
+    Size::new(width, height)
+}
+
+fn main() -> Result<()> {
+    env_logger::init();
+    zi_term::incremental()?.run_event_loop(SplashScreen::with(()))
 }
 
 const SPLASH_LOGO: &str = r#"
@@ -181,8 +177,3 @@ const SPLASH_LOGO: &str = r#"
 "#;
 const SPLASH_TAGLINE: &str = "a splash screen for the terminal";
 const SPLASH_CREDITS: &str = "C-x C-c to quit";
-
-fn main() -> Result<()> {
-    env_logger::init();
-    zi_term::incremental()?.run_event_loop(SplashScreen::with(()))
-}

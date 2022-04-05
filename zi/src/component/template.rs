@@ -5,8 +5,9 @@ use std::{
 };
 
 use super::{
+    bindings::{CommandId, DynamicBindings},
     layout::{ComponentKey, Layout},
-    BindingMatch, Component, ComponentLink, MessageSender, ShouldRender,
+    Component, ComponentLink, MessageSender, ShouldRender,
 };
 use crate::terminal::{Key, Rect};
 
@@ -66,6 +67,7 @@ impl std::fmt::Display for ComponentId {
 
 pub(crate) struct DynamicMessage(pub(crate) Box<dyn Any + Send + 'static>);
 pub(crate) struct DynamicProperties(Box<dyn Any>);
+// pub(crate) struct DynamicBindings(pub(crate) Box<dyn HasKeymap>);
 pub(crate) struct DynamicTemplate(pub(crate) Box<dyn Template>);
 
 impl Deref for DynamicTemplate {
@@ -91,9 +93,14 @@ pub(crate) trait Renderable {
 
     fn view(&self) -> Layout;
 
-    fn has_focus(&self) -> bool;
+    fn bindings(&self, bindings: &mut DynamicBindings);
 
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<DynamicMessage>;
+    fn run_command(
+        &self,
+        bindings: &DynamicBindings,
+        command_id: CommandId,
+        pressed: &[Key],
+    ) -> Option<DynamicMessage>;
 
     fn tick(&self) -> Option<DynamicMessage>;
 }
@@ -132,19 +139,18 @@ impl<ComponentT: Component> Renderable for ComponentT {
     }
 
     #[inline]
-    fn has_focus(&self) -> bool {
-        <Self as Component>::has_focus(self)
+    fn bindings(&self, bindings: &mut DynamicBindings) {
+        bindings.typed(|bindings| <Self as Component>::bindings(self, bindings));
     }
 
     #[inline]
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<DynamicMessage> {
-        let binding_match = <Self as Component>::input_binding(self, pressed);
-        BindingMatch {
-            transition: binding_match.transition,
-            message: binding_match
-                .message
-                .map(|message| DynamicMessage(Box::new(message))),
-        }
+    fn run_command(
+        &self,
+        bindings: &DynamicBindings,
+        command_id: CommandId,
+        keys: &[Key],
+    ) -> Option<DynamicMessage> {
+        bindings.execute_command(self, command_id, keys)
     }
 
     #[inline]
@@ -165,7 +171,7 @@ pub(crate) trait Template {
         id: ComponentId,
         frame: Rect,
         sender: Box<dyn MessageSender>,
-    ) -> Box<dyn Renderable + 'static>;
+    ) -> (Box<dyn Renderable + 'static>, DynamicBindings);
 
     fn dynamic_properties(&mut self) -> DynamicProperties;
 }
@@ -212,9 +218,12 @@ impl<ComponentT: Component> Template for ComponentDef<ComponentT> {
         component_id: ComponentId,
         frame: Rect,
         sender: Box<dyn MessageSender>,
-    ) -> Box<dyn Renderable> {
+    ) -> (Box<dyn Renderable>, DynamicBindings) {
         let link = ComponentLink::new(sender, component_id);
-        Box::new(ComponentT::create(self.properties_unwrap(), frame, link))
+        (
+            Box::new(ComponentT::create(self.properties_unwrap(), frame, link)),
+            DynamicBindings::new::<ComponentT>(),
+        )
     }
 
     #[inline]

@@ -2,8 +2,8 @@ use std::{cmp, iter};
 
 use super::text::{Text, TextProperties};
 use crate::{
-    BindingMatch, BindingTransition, Callback, Component, ComponentExt, ComponentLink,
-    FlexDirection, Item, Key, Layout, Rect, ShouldRender, Style,
+    Bindings, Callback, Component, ComponentExt, ComponentLink, FlexDirection, Item, Key, Layout,
+    Rect, ShouldRender, Style,
 };
 
 #[derive(Clone, PartialEq)]
@@ -129,29 +129,22 @@ impl Component for Select {
         }
     }
 
-    fn has_focus(&self) -> bool {
-        self.properties.focused
-    }
+    fn bindings(&self, bindings: &mut Bindings<Self>) {
+        bindings.set_focus(self.properties.focused);
 
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
-        let mut transition = BindingTransition::Clear;
-        let message = match pressed {
-            [Key::Ctrl('n')] | [Key::Down] => Some(Message::NextItem),
-            [Key::Ctrl('p')] | [Key::Up] => Some(Message::PreviousItem),
-            [Key::Alt('<')] => Some(Message::FirstItem),
-            [Key::Alt('>')] => Some(Message::LastItem),
-            [Key::Ctrl('v')] | [Key::PageDown] => Some(Message::NextPage),
-            [Key::Alt('v')] | [Key::PageUp] => Some(Message::PreviousPage),
-            [Key::Ctrl('x')] => {
-                transition = BindingTransition::Continue;
-                None
-            }
-            _ => None,
-        };
-        BindingMatch {
-            transition,
-            message,
+        if !bindings.is_empty() {
+            return;
         }
+        bindings.add("next-item", [Key::Ctrl('n')], || Message::NextItem);
+        bindings.add("next-item", [Key::Down], || Message::NextItem);
+        bindings.add("previous-item", [Key::Ctrl('p')], || Message::PreviousItem);
+        bindings.add("previous-item", [Key::Up], || Message::PreviousItem);
+        bindings.add("first-item", [Key::Alt('<')], || Message::FirstItem);
+        bindings.add("last-item", [Key::Alt('>')], || Message::LastItem);
+        bindings.add("next-page", [Key::Ctrl('v')], || Message::NextPage);
+        bindings.add("next-page", [Key::PageDown], || Message::NextPage);
+        bindings.add("previous-page", [Key::Alt('v')], || Message::PreviousPage);
+        bindings.add("previous-page", [Key::PageUp], || Message::PreviousPage);
     }
 }
 

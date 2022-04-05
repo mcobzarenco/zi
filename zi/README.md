@@ -96,23 +96,30 @@ impl Component for Counter {
         ShouldRender::Yes
     }
 
-    // Whether the component is currently focused which will caused
-    // `input_binding` to be called on user input.
-    fn has_focus(&self) -> bool {
-        true
-    }
+    // Updates the key bindings of the component.
+    //
+    // This method will be called after the component lifecycle methods. It is
+    // used to specify how to react in response to keyboard events, typically
+    // by sending a message.
+    fn bindings(&self, bindings: &mut Bindings<Self>) {
+        // If we already initialised the bindings, nothing to do -- they never
+        // change in this example
+        if !bindings.is_empty() {
+            return;
+        }
+        // Set focus to `true` in order to react to key presses
+        bindings.set_focus(true);
 
-    // Send messages in reaction to user input.
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
-        BindingMatch::clear(match pressed {
-            &[Key::Char('+')]  => Some(Message::Increment),
-            &[Key::Char('-')] => Some(Message::Decrement),
-            &[Key::Esc] => {
-                self.link.exit();
-                None
-            }
-            _ => None,
-        })
+        // Increment
+        bindings.add("increment", [Key::Char('+')], || Message::Increment);
+        bindings.add("increment", [Key::Char('=')], || Message::Increment);
+
+        // Decrement
+        bindings.add("decrement", [Key::Char('-')], || Message::Decrement);
+
+        // Exit
+        bindings.add("exit", [Key::Ctrl('c')], |this: &Self| this.link.exit());
+        bindings.add("exit", [Key::Esc], |this: &Self| this.link.exit());
     }
 }
 

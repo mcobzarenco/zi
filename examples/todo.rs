@@ -8,8 +8,8 @@ use zi::{
         select::{Select, SelectProperties},
         text::{Text, TextAlign, TextProperties},
     },
-    BindingMatch, BindingTransition, Callback, Canvas, Colour, Component, ComponentExt,
-    ComponentLink, FlexDirection, Item, Key, Layout, Rect, ShouldRender, Style,
+    prelude::*,
+    Callback,
 };
 use zi_term::Result;
 
@@ -439,37 +439,27 @@ impl Component for TodoMvc {
         Layout::column([title, todo_items, status_bar])
     }
 
-    fn has_focus(&self) -> bool {
-        true
-    }
-
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
-        let mut transition = BindingTransition::Clear;
-        let message = match pressed {
-            [Key::Esc] | [Key::Alt('\u{1b}')] => Some(Message::Edit),
-            [Key::Char('\n')] => Some(Message::AddItem),
-            [Key::Alt('p')] => Some(Message::MoveItemUp),
-            [Key::Alt('n')] => Some(Message::MoveItemDown),
-            [Key::Ctrl('k')] => Some(Message::DeleteItem),
-            [Key::Ctrl('x'), Key::Ctrl('k')] => Some(Message::DeleteDone),
-            [Key::Char('\t')] => Some(Message::ToggleDone),
-            [Key::Ctrl('x'), Key::Ctrl('c')] => {
-                self.link.exit();
-                None
-            }
-            [Key::Ctrl('x')] => {
-                transition = BindingTransition::Continue;
-                None
-            }
-            _ => {
-                transition = BindingTransition::Clear;
-                None
-            }
-        };
-        BindingMatch {
-            transition,
-            message,
+    fn bindings(&self, bindings: &mut Bindings<Self>) {
+        if !bindings.is_empty() {
+            return;
         }
+        bindings.set_focus(true);
+
+        bindings.add("edit", [Key::Esc], || Message::Edit);
+        bindings.add("edit", [Key::Alt('\u{1b}')], || Message::Edit);
+        bindings.add("add-item", [Key::Char('\n')], || Message::AddItem);
+        bindings.add("move-item-up", [Key::Alt('p')], || Message::MoveItemUp);
+        bindings.add("move-item-down", [Key::Alt('n')], || Message::MoveItemDown);
+        bindings.add("delete-item", [Key::Ctrl('k')], || Message::DeleteItem);
+        bindings.add(
+            "delete-done-items",
+            [Key::Ctrl('x'), Key::Ctrl('k')],
+            || Message::DeleteDone,
+        );
+        bindings.add("toggle-done", [Key::Char('\t')], || Message::ToggleDone);
+        bindings.add("exit", [Key::Ctrl('x'), Key::Ctrl('c')], |this: &Self| {
+            this.link.exit()
+        });
     }
 }
 

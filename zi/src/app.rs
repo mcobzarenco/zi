@@ -7,9 +7,10 @@ use std::{collections::HashMap, fmt::Debug, time::Instant};
 
 use crate::{
     component::{
+        bindings::{BindingQuery, DynamicBindings, KeySequenceSlice},
         layout::{LaidCanvas, LaidComponent, Layout},
         template::{ComponentId, DynamicMessage, DynamicProperties, Renderable},
-        BindingMatch, BindingTransition, LinkMessage, ShouldRender,
+        LinkMessage, ShouldRender,
     },
     terminal::{Canvas, Event, Key, Position, Rect, Size},
 };
@@ -277,41 +278,46 @@ impl App {
         let Self {
             ref mut components,
             ref subscriptions,
-            ref mut controller,
+            controller: ref mut input_controller,
             ..
         } = *self;
-        let mut clear_controller = false;
-        let mut changed_focus = false;
+        let mut clear_controller = true;
 
-        controller.push(key);
+        input_controller.push(key);
         for component_id in subscriptions.focused.iter() {
             let focused_component = components
                 .get_mut(component_id)
                 .expect("A focused component should be mounted.");
-            let binding = focused_component.input_binding(&controller.keys);
-            match binding.transition {
-                BindingTransition::Continue => {}
-                BindingTransition::Clear => {
-                    clear_controller = true;
-                }
-                BindingTransition::ChangedFocus => {
-                    changed_focus = true;
-                }
-            }
-            if let Some(message) = binding.message {
-                focused_component.update(message);
-            }
 
-            // If the focus has changed we don't notify other focused components
-            // deeper in the tree.
-            if changed_focus {
-                controller.keys.clear();
+            match focused_component
+                .bindings
+                .keymap()
+                .check_sequence(&input_controller.keys)
+            {
+                Some(BindingQuery::Match(command_id)) => {
+                    if let Some(message) = focused_component.renderable.run_command(
+                        &focused_component.bindings,
+                        *command_id,
+                        &input_controller.keys,
+                    ) {
+                        focused_component.update(message);
+                    }
+                }
+                Some(BindingQuery::PrefixOf(prefix_of)) => {
+                    log::info!(
+                        "{} ({} commands)",
+                        KeySequenceSlice::from(input_controller.keys.as_slice()),
+                        prefix_of.len()
+                    );
+                    clear_controller = false;
+                }
+                None => {}
             }
         }
 
         // If any component returned `BindingTransition::Clear`, we clear the controller.
         if clear_controller {
-            controller.keys.clear();
+            input_controller.keys.clear();
         }
     }
 
@@ -364,10 +370,12 @@ impl App {
                     let mut new_component = false;
                     let component = components.entry(component_id).or_insert_with(|| {
                         new_component = true;
-                        let renderable = template.create(component_id, frame, sender.clone_box());
+                        let (renderable, bindings) =
+                            template.create(component_id, frame, sender.clone_box());
                         MountedComponent {
                             renderable,
                             frame,
+                            bindings,
                             should_render: ShouldRender::Yes.into(),
                             generation,
                         }
@@ -388,7 +396,8 @@ impl App {
                         statistics.new += 1;
                     }
 
-                    if component.has_focus() {
+                    component.update_bindings();
+                    if component.bindings.keymap().focused() {
                         subscriptions.add_focused(component_id);
                     }
 
@@ -491,6 +500,7 @@ type Generation = usize;
 struct MountedComponent {
     renderable: Box<dyn Renderable>,
     frame: Rect,
+    bindings: DynamicBindings,
     generation: Generation,
     should_render: bool,
 }
@@ -522,13 +532,8 @@ impl MountedComponent {
     }
 
     #[inline]
-    fn has_focus(&self) -> bool {
-        self.renderable.has_focus()
-    }
-
-    #[inline]
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<DynamicMessage> {
-        self.renderable.input_binding(pressed)
+    fn update_bindings(&mut self) {
+        self.renderable.bindings(&mut self.bindings)
     }
 
     #[inline]

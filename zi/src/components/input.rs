@@ -4,8 +4,8 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
     layout::Layout,
     text::{cursor, CharIndex, TextStorage},
-    BindingMatch, BindingTransition, Callback, Canvas, Colour, Component, ComponentLink, Key, Rect,
-    ShouldRender, Style,
+    AnyChar, Bindings, Callback, Canvas, Colour, Component, ComponentLink, Key, Rect, ShouldRender,
+    Style,
 };
 
 pub use crate::text::Cursor;
@@ -157,34 +157,34 @@ impl Component for Input {
         canvas.into()
     }
 
-    fn has_focus(&self) -> bool {
-        self.properties.focused
-    }
-
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
-        let mut transition = BindingTransition::Clear;
-        let message = match pressed {
-            &[Key::Ctrl('b')] | &[Key::Left] => Some(Message::CursorLeft),
-            &[Key::Ctrl('f')] | &[Key::Right] => Some(Message::CursorRight),
-            &[Key::Ctrl('a')] | &[Key::Home] => Some(Message::StartOfLine),
-            &[Key::Ctrl('e')] | &[Key::End] => Some(Message::EndOfLine),
+    fn bindings(&self, bindings: &mut Bindings<Self>) {
+        bindings.set_focus(self.properties.focused);
+        if !bindings.is_empty() {
+            return;
+        }
+        bindings.add("left", [Key::Ctrl('b')], || Message::CursorLeft);
+        bindings.add("left", [Key::Left], || Message::CursorLeft);
+        bindings.add("right", [Key::Ctrl('f')], || Message::CursorRight);
+        bindings.add("right", [Key::Right], || Message::CursorRight);
+        bindings.add("start-of-line", [Key::Ctrl('a')], || Message::StartOfLine);
+        bindings.add("start-of-line", [Key::Home], || Message::StartOfLine);
+        bindings.add("end-of-line", [Key::Ctrl('e')], || Message::EndOfLine);
+        bindings.add("end-of-line", [Key::End], || Message::EndOfLine);
+        bindings.add("delete-forward", [Key::Ctrl('d')], || {
+            Message::DeleteForward
+        });
+        bindings.add("delete-forward", [Key::Delete], || Message::DeleteForward);
+        bindings.add("delete-backward", [Key::Backspace], || {
+            Message::DeleteBackward
+        });
+        bindings.add("insert-character", AnyChar, |keys: &[Key]| match keys {
             &[Key::Char(character)]
                 if character != '\n' && character != '\r' && character != '\t' =>
             {
                 Some(Message::InsertChar(character))
             }
-            &[Key::Ctrl('d')] | &[Key::Delete] => Some(Message::DeleteForward),
-            &[Key::Backspace] => Some(Message::DeleteBackward),
-            &[Key::Ctrl('x')] => {
-                transition = BindingTransition::Continue;
-                None
-            }
             _ => None,
-        };
-        BindingMatch {
-            transition,
-            message,
-        }
+        });
     }
 }
 

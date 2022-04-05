@@ -1,5 +1,13 @@
 # Unreleased
 
+## Breaking
+
+ - Replaced input handling with a new declarative system for specifying key
+   bindings and how to react in response to input events. There's a new
+   `Component` lifecycle method `bindings()` which replaces the old `input_binding`
+   and `has_focus` methods. The newly introduced `Bindings` type allows
+   registering handlers which will run in response to key patterns.
+
 # v0.2.0
 ## Breaking
 

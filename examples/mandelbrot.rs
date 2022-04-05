@@ -1,9 +1,6 @@
 use num_complex::Complex;
 use rayon::{iter::ParallelExtend, prelude::*};
-use zi::{
-    self, terminal::SquarePixelGrid, BindingMatch, BindingTransition, Colour, Component,
-    ComponentExt, ComponentLink, Key, Layout, Rect, ShouldRender, Size,
-};
+use zi::{prelude::*, terminal::SquarePixelGrid};
 use zi_term::Result;
 
 type Position = euclid::default::Point2D<f64>;
@@ -172,33 +169,29 @@ impl Component for Viewer {
         })
     }
 
-    fn has_focus(&self) -> bool {
-        true
-    }
-
-    fn input_binding(&self, pressed: &[Key]) -> BindingMatch<Self::Message> {
-        let mut transition = BindingTransition::Clear;
-        let message = match pressed {
-            [Key::Char('w')] => Some(Message::MoveUp),
-            [Key::Char('d')] => Some(Message::MoveRight),
-            [Key::Char('s')] => Some(Message::MoveDown),
-            [Key::Char('a')] => Some(Message::MoveLeft),
-            [Key::Char('=')] => Some(Message::ZoomIn),
-            [Key::Char('-')] => Some(Message::ZoomOut),
-            [Key::Ctrl('x'), Key::Ctrl('c')] => {
-                self.link.exit();
-                None
-            }
-            [Key::Ctrl('x')] => {
-                transition = BindingTransition::Continue;
-                None
-            }
-            _ => None,
-        };
-        BindingMatch {
-            transition,
-            message,
+    fn bindings(&self, bindings: &mut Bindings<Self>) {
+        // If we already initialised the bindings, nothing to do -- they never
+        // change in this example
+        if !bindings.is_empty() {
+            return;
         }
+        // Set focus to `true` in order to react to key presses
+        bindings.set_focus(true);
+
+        // Panning
+        bindings.add("move-up", [Key::Char('w')], || Message::MoveUp);
+        bindings.add("move-right", [Key::Char('d')], || Message::MoveRight);
+        bindings.add("move-down", [Key::Char('s')], || Message::MoveDown);
+        bindings.add("move-left", [Key::Char('a')], || Message::MoveLeft);
+
+        // Zoom
+        bindings.add("zoom-in", [Key::Char('=')], || Message::ZoomIn);
+        bindings.add("zoom-out", [Key::Char('-')], || Message::ZoomOut);
+
+        // Exit
+        bindings.add("exit", [Key::Ctrl('x'), Key::Ctrl('c')], |this: &Self| {
+            this.link.exit()
+        });
     }
 }
 
