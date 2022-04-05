@@ -119,22 +119,12 @@ impl<PainterT: Painter> Crossterm<PainterT> {
             layout,
         );
 
-        loop {
+        while !app.poll_state().exit() {
             let canvas = app.draw();
 
             let last_drawn = Instant::now();
             let num_bytes_presented = self.present(canvas)?;
             let presented_time = last_drawn.elapsed();
-
-            // log::debug!(
-            //     "Frame {}: {} comps [{}] draw {:.1}ms pres {:.1}ms diff {}b",
-            //     self.runtime.num_frame,
-            //     self.components.len(),
-            //     statistics,
-            //     drawn_time.as_secs_f64() * 1000.0,
-            //     presented_time.as_secs_f64() * 1000.0,
-            //     num_bytes_presented,
-            // );
 
             log::debug!(
                 "Frame: pres {:.1}ms diff {}b",
@@ -144,6 +134,8 @@ impl<PainterT: Painter> Crossterm<PainterT> {
 
             self.poll_events_batch(&mut tokio_runtime, &mut app, last_drawn)?;
         }
+
+        Ok(())
     }
 
     /// Suspends the event stream.
