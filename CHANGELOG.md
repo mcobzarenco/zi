@@ -1,5 +1,6 @@
 # Unreleased
 
+# v0.3.0
 ## Breaking
 
  - Replaced input handling with a new declarative system for specifying key
@@ -7,6 +8,11 @@
    `Component` lifecycle method `bindings()` which replaces the old `input_binding`
    and `has_focus` methods. The newly introduced `Bindings` type allows
    registering handlers which will run in response to key patterns.
+ - Enable support for animated components in zi-term (crossterm backend)
+ - A new experimental notification api for binding queries
+ - Fix trying to draw while the app is exiting
+ - Upgrade all dependencies of zi and zi-term to latest available
+
 
 # v0.2.0
 ## Breaking
