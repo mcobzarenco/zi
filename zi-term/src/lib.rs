@@ -215,7 +215,7 @@ impl<PainterT: Painter> Crossterm<PainterT> {
                         Ok(())
                     }
                     _ = tokio::time::sleep(timeout_duration) => {
-                        // app.tick();
+                        app.tick();
                         force_redraw = true;
                         Ok(())
                     }
