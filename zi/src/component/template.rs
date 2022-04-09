@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::{
-    bindings::{CommandId, DynamicBindings},
+    bindings::{CommandId, DynamicBindings, NamedBindingQuery},
     layout::{ComponentKey, Layout},
     Component, ComponentLink, MessageSender, ShouldRender,
 };
@@ -95,6 +95,8 @@ pub(crate) trait Renderable {
 
     fn bindings(&self, bindings: &mut DynamicBindings);
 
+    fn notify_binding_queries(&self, bindings: &[Option<NamedBindingQuery>], keys: &[Key]);
+
     fn run_command(
         &self,
         bindings: &DynamicBindings,
@@ -141,6 +143,10 @@ impl<ComponentT: Component> Renderable for ComponentT {
     #[inline]
     fn bindings(&self, bindings: &mut DynamicBindings) {
         bindings.typed(|bindings| <Self as Component>::bindings(self, bindings));
+    }
+
+    fn notify_binding_queries(&self, bindings: &[Option<NamedBindingQuery>], keys: &[Key]) {
+        <Self as Component>::notify_binding_queries(self, bindings, keys);
     }
 
     #[inline]

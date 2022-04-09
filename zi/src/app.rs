@@ -7,7 +7,7 @@ use std::{collections::HashMap, fmt::Debug, time::Instant};
 
 use crate::{
     component::{
-        bindings::{BindingQuery, DynamicBindings, KeySequenceSlice},
+        bindings::{BindingQuery, DynamicBindings, KeySequenceSlice, NamedBindingQuery},
         layout::{LaidCanvas, LaidComponent, Layout},
         template::{ComponentId, DynamicMessage, DynamicProperties, Renderable},
         LinkMessage, ShouldRender,
@@ -282,13 +282,21 @@ impl App {
             ..
         } = *self;
         let mut clear_controller = true;
+        let mut binding_queries = SmallVec::<[_; 4]>::with_capacity(subscriptions.focused.len());
 
         input_controller.push(key);
         for component_id in subscriptions.focused.iter() {
             let focused_component = components
                 .get_mut(component_id)
-                .expect("A focused component should be mounted.");
+                .expect("focused component to be mounted");
 
+            let binding_query = focused_component
+                .bindings
+                .keymap()
+                .check_sequence(&input_controller.keys);
+            binding_queries.push(binding_query.map(|binding_query| {
+                NamedBindingQuery::new(focused_component.bindings.keymap(), binding_query)
+            }));
             match focused_component
                 .bindings
                 .keymap()
@@ -313,6 +321,15 @@ impl App {
                 }
                 None => {}
             }
+        }
+
+        for component_id in subscriptions.notify.iter() {
+            let notify_component = components
+                .get_mut(component_id)
+                .expect("component to be mounted");
+            notify_component
+                .renderable
+                .notify_binding_queries(&binding_queries, &input_controller.keys);
         }
 
         // If any component returned `BindingTransition::Clear`, we clear the controller.
@@ -397,8 +414,12 @@ impl App {
                     }
 
                     component.update_bindings();
-                    if component.bindings.keymap().focused() {
+                    if component.bindings.focused() {
                         subscriptions.add_focused(component_id);
+                    }
+
+                    if component.bindings.notify() {
+                        subscriptions.add_notify(component_id);
                     }
 
                     if let Some(message) = component.tick() {
@@ -437,6 +458,7 @@ impl App {
 
 struct ComponentSubscriptions {
     focused: SmallVec<[ComponentId; 2]>,
+    notify: SmallVec<[ComponentId; 2]>,
     tickable: SmallVec<[TickSubscription; 2]>,
 }
 
@@ -444,6 +466,7 @@ impl ComponentSubscriptions {
     fn new() -> Self {
         Self {
             focused: SmallVec::new(),
+            notify: SmallVec::new(),
             tickable: SmallVec::new(),
         }
     }
@@ -451,13 +474,21 @@ impl ComponentSubscriptions {
     #[inline]
     fn clear(&mut self) {
         self.focused.clear();
+        self.notify.clear();
         self.tickable.clear();
     }
 
+    #[inline]
     fn add_focused(&mut self, component_id: ComponentId) {
         self.focused.push(component_id);
     }
 
+    #[inline]
+    fn add_notify(&mut self, component_id: ComponentId) {
+        self.notify.push(component_id);
+    }
+
+    #[inline]
     fn add_tickable(&mut self, component_id: ComponentId, message: DynamicMessage) {
         self.tickable.push(TickSubscription {
             component_id,

@@ -13,12 +13,12 @@ use std::{
 };
 
 use self::{
-    bindings::Bindings,
+    bindings::{Bindings, NamedBindingQuery},
     template::{ComponentId, DynamicMessage},
 };
 use crate::{
     app::{ComponentMessage, MessageSender},
-    terminal::Rect,
+    terminal::{Key, Rect},
 };
 
 /// Components are the building blocks of the UI in Zi.
@@ -91,6 +91,8 @@ pub trait Component: Sized + 'static {
     /// used to specify how to react in response to keyboard events, typically
     /// by sending a message.
     fn bindings(&self, _bindings: &mut Bindings<Self>) {}
+
+    fn notify_binding_queries(&self, _queries: &[Option<NamedBindingQuery>], _keys: &[Key]) {}
 
     fn tick(&self) -> Option<Self::Message> {
         None

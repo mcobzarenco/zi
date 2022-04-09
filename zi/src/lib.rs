@@ -136,7 +136,7 @@ pub mod components;
 pub mod terminal;
 
 pub use component::{
-    bindings::{AnyChar, BindingQuery, Bindings, Keymap},
+    bindings::{AnyCharacter, BindingQuery, Bindings, EndsWith, Keymap, NamedBindingQuery},
     layout::{self, ComponentExt, ComponentKey, Container, FlexBasis, FlexDirection, Item},
     Callback, Component, ComponentLink, Layout, ShouldRender,
 };
@@ -145,7 +145,7 @@ pub use terminal::{Background, Canvas, Colour, Foreground, Key, Position, Rect, 
 pub mod prelude {
     //! The Zi prelude.
     pub use super::{
-        AnyChar, Bindings, Component, ComponentExt, ComponentLink, Container, FlexBasis,
+        AnyCharacter, Bindings, Component, ComponentExt, ComponentLink, Container, FlexBasis,
         FlexDirection, Item, Layout, ShouldRender,
     };
     pub use super::{Background, Canvas, Colour, Foreground, Key, Position, Rect, Size, Style};

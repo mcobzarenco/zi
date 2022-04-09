@@ -4,8 +4,8 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
     layout::Layout,
     text::{cursor, CharIndex, TextStorage},
-    AnyChar, Bindings, Callback, Canvas, Colour, Component, ComponentLink, Key, Rect, ShouldRender,
-    Style,
+    AnyCharacter, Bindings, Callback, Canvas, Colour, Component, ComponentLink, Key, Rect,
+    ShouldRender, Style,
 };
 
 pub use crate::text::Cursor;
@@ -177,14 +177,18 @@ impl Component for Input {
         bindings.add("delete-backward", [Key::Backspace], || {
             Message::DeleteBackward
         });
-        bindings.add("insert-character", AnyChar, |keys: &[Key]| match keys {
-            &[Key::Char(character)]
-                if character != '\n' && character != '\r' && character != '\t' =>
-            {
-                Some(Message::InsertChar(character))
-            }
-            _ => None,
-        });
+        bindings.add(
+            "insert-character",
+            AnyCharacter,
+            |keys: &[Key]| match keys {
+                &[Key::Char(character)]
+                    if character != '\n' && character != '\r' && character != '\t' =>
+                {
+                    Some(Message::InsertChar(character))
+                }
+                _ => None,
+            },
+        );
     }
 }
 

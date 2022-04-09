@@ -14,6 +14,26 @@ use crate::terminal::Key;
 pub struct CommandId(usize);
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum NamedBindingQuery {
+    Match(Cow<'static, str>),
+    PrefixOf(SmallVec<[Cow<'static, str>; 4]>),
+}
+
+impl NamedBindingQuery {
+    pub fn new(keymap: &Keymap, query: &BindingQuery) -> Self {
+        match query {
+            BindingQuery::Match(command_id) => Self::Match(keymap.names[command_id.0].clone()),
+            BindingQuery::PrefixOf(commands) => Self::PrefixOf(
+                commands
+                    .iter()
+                    .map(|command_id| keymap.names[command_id.0].clone())
+                    .collect(),
+            ),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum BindingQuery {
     Match(CommandId),
     PrefixOf(SmallVec<[CommandId; 4]>),
@@ -39,7 +59,6 @@ impl BindingQuery {
 pub struct Keymap {
     names: Vec<Cow<'static, str>>,
     keymap: HashMap<KeyPattern, BindingQuery>,
-    focused: bool,
 }
 
 impl Keymap {
@@ -53,14 +72,6 @@ impl Keymap {
 
     pub fn is_empty(&self) -> bool {
         self.keymap.is_empty()
-    }
-
-    pub fn set_focus(&mut self, focused: bool) {
-        self.focused = focused;
-    }
-
-    pub fn focused(&self) -> bool {
-        self.focused
     }
 
     pub fn push(
@@ -119,10 +130,16 @@ impl Keymap {
 
     pub fn check_sequence(&self, keys: &[Key]) -> Option<&BindingQuery> {
         let pattern: KeyPattern = keys.iter().copied().into();
-        self.keymap.get(&pattern).or_else(|| match keys {
-            &[Key::Char(_)] => self.keymap.get(&KeyPattern::AnyChar),
-            _ => None,
-        })
+        self.keymap
+            .get(&pattern)
+            .or_else(|| match keys {
+                &[Key::Char(_)] => self.keymap.get(&KeyPattern::AnyCharacter),
+                _ => None,
+            })
+            .or_else(|| match keys {
+                &[_, key] | &[key] => self.keymap.get(&KeyPattern::EndsWith([key])),
+                _ => None,
+            })
     }
 }
 
@@ -139,6 +156,8 @@ impl fmt::Debug for DynamicCommandFn {
 pub(crate) struct DynamicBindings {
     keymap: Keymap,
     commands: Vec<DynamicCommandFn>,
+    focused: bool,
+    notify: bool,
     type_id: TypeId,
 }
 
@@ -147,12 +166,35 @@ impl DynamicBindings {
         Self {
             keymap: Keymap::new(),
             commands: Vec::new(),
+            focused: false,
+            notify: false,
             type_id: TypeId::of::<ComponentT>(),
         }
     }
 
+    #[inline]
     pub(crate) fn keymap(&self) -> &Keymap {
         &self.keymap
+    }
+
+    #[inline]
+    pub fn set_focus(&mut self, focused: bool) {
+        self.focused = focused;
+    }
+
+    #[inline]
+    pub fn focused(&self) -> bool {
+        self.focused
+    }
+
+    #[inline]
+    pub fn set_notify(&mut self, notify: bool) {
+        self.notify = notify;
+    }
+
+    #[inline]
+    pub fn notify(&self) -> bool {
+        self.notify
     }
 
     pub(crate) fn add<ComponentT: Component, const VARIANT: usize>(
@@ -224,12 +266,22 @@ impl<ComponentT: Component> Bindings<ComponentT> {
 
     #[inline]
     pub fn set_focus(&mut self, focused: bool) {
-        self.bindings.keymap.set_focus(focused)
+        self.bindings.set_focus(focused)
     }
 
     #[inline]
     pub fn focused(&self) -> bool {
-        self.bindings.keymap.focused()
+        self.bindings.focused()
+    }
+
+    #[inline]
+    pub fn set_notify(&mut self, notify: bool) {
+        self.bindings.set_notify(notify)
+    }
+
+    #[inline]
+    pub fn notify(&self) -> bool {
+        self.bindings.notify()
     }
 
     #[inline]
@@ -240,6 +292,59 @@ impl<ComponentT: Component> Bindings<ComponentT> {
         command_fn: impl CommandFn<ComponentT, VARIANT> + 'static,
     ) -> CommandId {
         self.bindings.add(name, keys, command_fn)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum KeyPattern {
+    AnyCharacter,
+    EndsWith([Key; 1]),
+    Keys(SmallVec<[Key; 8]>),
+}
+
+impl KeyPattern {
+    fn keys(&self) -> Option<&[Key]> {
+        match self {
+            Self::AnyCharacter => None,
+            Self::EndsWith(key) => Some(key.as_slice()),
+            Self::Keys(keys) => Some(keys.as_slice()),
+        }
+    }
+}
+
+impl<IterT: IntoIterator<Item = Key>> From<IterT> for KeyPattern {
+    fn from(keys: IterT) -> Self {
+        Self::Keys(keys.into_iter().collect())
+    }
+}
+
+impl std::fmt::Display for KeyPattern {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            Self::AnyCharacter => {
+                write!(formatter, "Char(*)")
+            }
+            Self::Keys(keys) => KeySequenceSlice(keys.as_slice()).fmt(formatter),
+            Self::EndsWith(keys) => KeySequenceSlice(keys.as_slice()).fmt(formatter),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AnyCharacter;
+
+impl From<AnyCharacter> for KeyPattern {
+    fn from(_: AnyCharacter) -> Self {
+        Self::AnyCharacter
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EndsWith(pub Key);
+
+impl From<EndsWith> for KeyPattern {
+    fn from(ends_with: EndsWith) -> Self {
+        Self::EndsWith([ends_with.0])
     }
 }
 
@@ -318,59 +423,6 @@ where
     }
 }
 
-fn panic_on_overlapping_key_bindings(
-    new_pattern: &KeyPattern,
-    new_name: &str,
-    existing_pattern: &KeyPattern,
-    existing_name: &str,
-) -> ! {
-    panic!(
-        "Binding `{}` for `{}` is ambiguous as it overlaps with binding `{}` for command `{}`",
-        new_pattern, new_name, existing_pattern, existing_name,
-    );
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum KeyPattern {
-    AnyChar,
-    Keys(SmallVec<[Key; 8]>),
-}
-
-impl KeyPattern {
-    fn keys(&self) -> Option<&[Key]> {
-        match self {
-            Self::AnyChar => None,
-            Self::Keys(keys) => Some(keys.as_slice()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AnyChar;
-
-impl From<AnyChar> for KeyPattern {
-    fn from(_keys: AnyChar) -> Self {
-        Self::AnyChar
-    }
-}
-
-impl<IterT: IntoIterator<Item = Key>> From<IterT> for KeyPattern {
-    fn from(keys: IterT) -> Self {
-        Self::Keys(keys.into_iter().collect())
-    }
-}
-
-impl std::fmt::Display for KeyPattern {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        match self {
-            Self::AnyChar => {
-                write!(formatter, "Char(*)")
-            }
-            Self::Keys(keys) => KeySequenceSlice(keys.as_slice()).fmt(formatter),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeySequenceSlice<'a>(&'a [Key]);
 
@@ -400,6 +452,18 @@ impl<'a> std::fmt::Display for KeySequenceSlice<'a> {
         }
         Ok(())
     }
+}
+
+fn panic_on_overlapping_key_bindings(
+    new_pattern: &KeyPattern,
+    new_name: &str,
+    existing_pattern: &KeyPattern,
+    existing_name: &str,
+) -> ! {
+    panic!(
+        "Binding `{}` for `{}` is ambiguous as it overlaps with binding `{}` for command `{}`",
+        new_pattern, new_name, existing_pattern, existing_name,
+    );
 }
 
 #[cfg(test)]
