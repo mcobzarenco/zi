@@ -220,6 +220,12 @@ impl<ComponentT> Clone for ComponentLink<ComponentT> {
     }
 }
 
+impl<ComponentT> PartialEq for ComponentLink<ComponentT> {
+    fn eq(&self, other: &Self) -> bool {
+        self.component_id == other.component_id
+    }
+}
+
 /// Type to indicate whether a component should be rendered again.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShouldRender {
@@ -240,6 +246,22 @@ impl From<bool> for ShouldRender {
         } else {
             ShouldRender::No
         }
+    }
+}
+
+impl std::ops::BitOr for ShouldRender {
+    type Output = Self;
+
+    fn bitor(self, other: Self) -> Self {
+        ((self == ShouldRender::Yes) || (other == ShouldRender::Yes)).into()
+    }
+}
+
+impl std::ops::BitAnd for ShouldRender {
+    type Output = Self;
+
+    fn bitand(self, other: Self) -> Self {
+        ((self == ShouldRender::Yes) && (other == ShouldRender::Yes)).into()
     }
 }
 

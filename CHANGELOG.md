@@ -1,5 +1,8 @@
 # Unreleased
 
+# v0.3.1
+ - Implement `BitOr` for `ShouldRender`
+
 # v0.3.0
 ## Breaking
 
