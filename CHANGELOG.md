@@ -1,6 +1,7 @@
 # Unreleased
 
 # v0.3.1
+ - Re-export unicode_width and unicode_segmentation dependencies
  - Implement `BitOr` for `ShouldRender`
 
 # v0.3.0

@@ -1,9 +1,10 @@
 //! Module with utilities to convert a `Canvas` to a set of abstract paint operations.
-
-use unicode_width::UnicodeWidthStr;
+use zi::{
+    terminal::{Canvas, Position, Size, Style, Textel},
+    unicode_width::UnicodeWidthStr,
+};
 
 use super::Result;
-use zi::terminal::{Canvas, Position, Size, Style, Textel};
 
 pub trait Painter {
     const INITIAL_POSITION: Position;

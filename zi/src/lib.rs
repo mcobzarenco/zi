@@ -151,6 +151,13 @@ pub mod prelude {
     pub use super::{Background, Canvas, Colour, Foreground, Key, Position, Rect, Size, Style};
 }
 
+// Re-export 3rd party libraries to do with unicode segmentation.
+//
+// It is helpful to ensure downstream use the same version as zi to ensure any code relying on
+// unicode segmentation matches what zi does internally.
+pub use unicode_segmentation;
+pub use unicode_width;
+
 // Crate only modules
 pub(crate) mod component;
 pub(crate) mod text;
