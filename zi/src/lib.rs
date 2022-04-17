@@ -111,8 +111,10 @@
 //!        bindings.set_focus(true);
 //!
 //!        // Increment
-//!        bindings.add("increment", [Key::Char('+')], || Message::Increment);
-//!        bindings.add("increment", [Key::Char('=')], || Message::Increment);
+//!        bindings
+//!            .command("increment", || Message::Increment)
+//!            .with([Key::Char('+')])
+//!            .with([Key::Char('=')]);
 //!
 //!        // Decrement
 //!        bindings.add("decrement", [Key::Char('-')], || Message::Decrement);

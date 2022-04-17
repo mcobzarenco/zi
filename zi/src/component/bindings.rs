@@ -74,13 +74,33 @@ impl Keymap {
         self.keymap.is_empty()
     }
 
-    pub fn push(
+    pub fn add(
         &mut self,
         name: impl Into<Cow<'static, str>>,
         pattern: impl Into<KeyPattern>,
     ) -> CommandId {
-        let command_id = CommandId(self.names.len());
+        let command_id = self.add_command(name).0;
+        self.bind_command(command_id, pattern);
+        command_id
+    }
+
+    pub fn add_command(&mut self, name: impl Into<Cow<'static, str>>) -> (CommandId, bool) {
         let name = name.into();
+        let (command_id, is_new_command) = self
+            .names
+            .iter()
+            .enumerate()
+            .find(|(_index, existing)| **existing == name)
+            .map(|(index, _)| (CommandId(index), false))
+            .unwrap_or_else(|| (CommandId(self.names.len()), true));
+        if is_new_command {
+            self.names.push(name);
+        }
+        (command_id, is_new_command)
+    }
+
+    pub fn bind_command(&mut self, command_id: CommandId, pattern: impl Into<KeyPattern>) {
+        let name = &self.names[command_id.0];
         let pattern = pattern.into();
 
         // Add `BindingQuery::PrefixOf` entries for all prefixes of the key sequence
@@ -92,7 +112,7 @@ impl Keymap {
                     .and_modify(|entry| match entry {
                         BindingQuery::Match(other_command_id) => panic_on_overlapping_key_bindings(
                             &pattern,
-                            &name,
+                            name,
                             &prefix,
                             &self.names[other_command_id.0],
                         ),
@@ -110,22 +130,18 @@ impl Keymap {
             .and_modify(|entry| match entry {
                 BindingQuery::Match(other_command_id) => panic_on_overlapping_key_bindings(
                     &pattern,
-                    &name,
+                    name,
                     &pattern,
                     &self.names[other_command_id.0],
                 ),
                 BindingQuery::PrefixOf(prefix_of) => panic_on_overlapping_key_bindings(
                     &pattern,
-                    &name,
+                    name,
                     &pattern,
                     &self.names[prefix_of[0].0],
                 ),
             })
             .or_insert_with(|| BindingQuery::Match(command_id));
-
-        self.names.push(name);
-
-        command_id
     }
 
     pub fn check_sequence(&self, keys: &[Key]) -> Option<&BindingQuery> {
@@ -162,7 +178,7 @@ pub(crate) struct DynamicBindings {
 }
 
 impl DynamicBindings {
-    pub(crate) fn new<ComponentT: Component>() -> Self {
+    pub fn new<ComponentT: Component>() -> Self {
         Self {
             keymap: Keymap::new(),
             commands: Vec::new(),
@@ -173,7 +189,7 @@ impl DynamicBindings {
     }
 
     #[inline]
-    pub(crate) fn keymap(&self) -> &Keymap {
+    pub fn keymap(&self) -> &Keymap {
         &self.keymap
     }
 
@@ -197,30 +213,47 @@ impl DynamicBindings {
         self.notify
     }
 
-    pub(crate) fn add<ComponentT: Component, const VARIANT: usize>(
+    pub fn add<ComponentT: Component, const VARIANT: usize>(
         &mut self,
         name: impl Into<Cow<'static, str>>,
         keys: impl Into<KeyPattern>,
         command_fn: impl CommandFn<ComponentT, VARIANT> + 'static,
     ) -> CommandId {
-        assert_eq!(self.type_id, TypeId::of::<ComponentT>());
-
-        let name = name.into();
-        let command_id = self.keymap.push(name, keys);
-        self.commands.push(DynamicCommandFn(Box::new(
-            move |erased: &dyn Any, keys: &[Key]| {
-                let component = erased
-                    .downcast_ref()
-                    .expect("Incorrect `Component` type when downcasting");
-                command_fn
-                    .call(component, keys)
-                    .map(|message| DynamicMessage(Box::new(message)))
-            },
-        )));
+        let command_id = self.add_command(name, command_fn);
+        self.bind_command(command_id, keys);
         command_id
     }
 
-    pub(crate) fn execute_command<ComponentT: Component>(
+    pub fn add_command<ComponentT: Component, const VARIANT: usize>(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+        command_fn: impl CommandFn<ComponentT, VARIANT> + 'static,
+    ) -> CommandId {
+        assert_eq!(self.type_id, TypeId::of::<ComponentT>());
+
+        let (command_id, is_new_command) = self.keymap.add_command(name);
+        let dyn_command_fn = DynamicCommandFn(Box::new(move |erased: &dyn Any, keys: &[Key]| {
+            let component = erased
+                .downcast_ref()
+                .expect("Incorrect `Component` type when downcasting");
+            command_fn
+                .call(component, keys)
+                .map(|message| DynamicMessage(Box::new(message)))
+        }));
+        if is_new_command {
+            self.commands.push(dyn_command_fn);
+        } else {
+            self.commands[command_id.0] = dyn_command_fn;
+        }
+
+        command_id
+    }
+
+    pub fn bind_command(&mut self, command_id: CommandId, keys: impl Into<KeyPattern>) {
+        self.keymap.bind_command(command_id, keys);
+    }
+
+    pub fn execute_command<ComponentT: Component>(
         &self,
         component: &ComponentT,
         id: CommandId,
@@ -231,7 +264,7 @@ impl DynamicBindings {
         (self.commands[id.0].0)(component, keys)
     }
 
-    pub(crate) fn typed<ComponentT: Component>(
+    pub fn typed<ComponentT: Component>(
         &mut self,
         callback: impl FnOnce(&mut Bindings<ComponentT>),
     ) {
@@ -290,8 +323,34 @@ impl<ComponentT: Component> Bindings<ComponentT> {
         name: impl Into<Cow<'static, str>>,
         keys: impl Into<KeyPattern>,
         command_fn: impl CommandFn<ComponentT, VARIANT> + 'static,
-    ) -> CommandId {
-        self.bindings.add(name, keys, command_fn)
+    ) {
+        self.bindings.add(name, keys, command_fn);
+    }
+
+    #[inline]
+    pub fn command<const VARIANT: usize>(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+        command_fn: impl CommandFn<ComponentT, VARIANT> + 'static,
+    ) -> BindingBuilder<ComponentT> {
+        let command_id = self.bindings.add_command(name, command_fn);
+        BindingBuilder {
+            wrapped: self,
+            command_id,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct BindingBuilder<'a, ComponentT> {
+    wrapped: &'a mut Bindings<ComponentT>,
+    command_id: CommandId,
+}
+
+impl<ComponentT: Component> BindingBuilder<'_, ComponentT> {
+    pub fn with(self, keys: impl Into<KeyPattern>) -> Self {
+        self.wrapped.bindings.bind_command(self.command_id, keys);
+        self
     }
 }
 
@@ -486,6 +545,16 @@ mod tests {
         fn view(&self) -> Layout {
             Canvas::new(Size::new(10, 10)).into()
         }
+    }
+
+    #[test]
+    fn keymap_alternative_binding_for_same_command() {
+        let mut keymap = Keymap::new();
+        let right_id = keymap.add("right", [Key::Right]);
+        let left_id = keymap.add("left", [Key::Left]);
+        assert_ne!(left_id, right_id);
+        let alternate_left_id = keymap.add("left", [Key::Ctrl('b')]);
+        assert_eq!(left_id, alternate_left_id);
     }
 
     #[test]

@@ -162,18 +162,26 @@ impl Component for Input {
         if !bindings.is_empty() {
             return;
         }
-        bindings.add("left", [Key::Ctrl('b')], || Message::CursorLeft);
-        bindings.add("left", [Key::Left], || Message::CursorLeft);
-        bindings.add("right", [Key::Ctrl('f')], || Message::CursorRight);
-        bindings.add("right", [Key::Right], || Message::CursorRight);
-        bindings.add("start-of-line", [Key::Ctrl('a')], || Message::StartOfLine);
-        bindings.add("start-of-line", [Key::Home], || Message::StartOfLine);
-        bindings.add("end-of-line", [Key::Ctrl('e')], || Message::EndOfLine);
-        bindings.add("end-of-line", [Key::End], || Message::EndOfLine);
-        bindings.add("delete-forward", [Key::Ctrl('d')], || {
-            Message::DeleteForward
-        });
-        bindings.add("delete-forward", [Key::Delete], || Message::DeleteForward);
+        bindings
+            .command("left", || Message::CursorLeft)
+            .with([Key::Ctrl('b')])
+            .with([Key::Left]);
+        bindings
+            .command("right", || Message::CursorRight)
+            .with([Key::Ctrl('f')])
+            .with([Key::Right]);
+        bindings
+            .command("start-of-line", || Message::StartOfLine)
+            .with([Key::Ctrl('a')])
+            .with([Key::Home]);
+        bindings
+            .command("end-of-line", || Message::EndOfLine)
+            .with([Key::Ctrl('e')])
+            .with([Key::End]);
+        bindings
+            .command("delete-forward", || Message::DeleteForward)
+            .with([Key::Ctrl('d')])
+            .with([Key::Delete]);
         bindings.add("delete-backward", [Key::Backspace], || {
             Message::DeleteBackward
         });

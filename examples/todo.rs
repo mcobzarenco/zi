@@ -445,8 +445,10 @@ impl Component for TodoMvc {
         }
         bindings.set_focus(true);
 
-        bindings.add("edit", [Key::Esc], || Message::Edit);
-        bindings.add("edit", [Key::Alt('\u{1b}')], || Message::Edit);
+        bindings
+            .command("edit", || Message::Edit)
+            .with([Key::Esc])
+            .with([Key::Alt('\u{1b}')]);
         bindings.add("add-item", [Key::Char('\n')], || Message::AddItem);
         bindings.add("move-item-up", [Key::Alt('p')], || Message::MoveItemUp);
         bindings.add("move-item-down", [Key::Alt('n')], || Message::MoveItemDown);
