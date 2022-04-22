@@ -1,6 +1,6 @@
 [package]
 name = "zi"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Marius Cobzarenco <marius@reinfer.io>"]
 description = "A declarative library for building monospace user interfaces"
 readme = "README.md"
@@ -10,7 +10,7 @@ edition = "2021"
 rust-version = "1.56"
 
 [dependencies]
-euclid = "0.22.6"
+euclid = "0.22.7"
 log = "0.4.16"
 ropey = "1.4.1"
 smallstr = "0.3.0"
