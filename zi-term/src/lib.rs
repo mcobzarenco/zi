@@ -269,9 +269,12 @@ impl<PainterT: Painter> Drop for Crossterm<PainterT> {
             crossterm::cursor::Show,
             crossterm::terminal::LeaveAlternateScreen
         )
-        .expect("Failed to clear screen when closing `crossterm` backend.");
+        .expect("Failed to clear screen when closing `crossterm` backend");
         crossterm::terminal::disable_raw_mode()
-            .expect("Failed to disable raw mode when closing `crossterm` backend.");
+            .expect("Failed to disable raw mode when closing `crossterm` backend");
+        self.target
+            .flush()
+            .expect("Failed to flush when closing `crossterm` backend");
     }
 }
 
