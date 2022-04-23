@@ -14,6 +14,11 @@ enum Message {
     Decrement,
 }
 
+// Properties or the `Counter` component, in this case the initial value.
+struct Properties {
+    initial_count: usize,
+}
+
 // The `Counter` component.
 struct Counter {
     // The state of the component -- the current value of the counter.
@@ -35,11 +40,14 @@ impl Component for Counter {
     type Message = Message;
 
     // Properties are the inputs to a Component passed in by their parent.
-    type Properties = ();
+    type Properties = Properties;
 
     // Creates ("mounts") a new `Counter` component.
-    fn create(_properties: Self::Properties, _frame: Rect, link: ComponentLink<Self>) -> Self {
-        Self { count: 0, link }
+    fn create(properties: Self::Properties, _frame: Rect, link: ComponentLink<Self>) -> Self {
+        Self {
+            count: properties.initial_count,
+            link,
+        }
     }
 
     // Returns the current visual layout of the component.
@@ -85,21 +93,24 @@ impl Component for Counter {
         if !bindings.is_empty() {
             return;
         }
+
         // Set focus to `true` in order to react to key presses
         bindings.set_focus(true);
 
-        // Increment
+        // Increment, when pressing + or =
         bindings
             .command("increment", || Message::Increment)
             .with([Key::Char('+')])
             .with([Key::Char('=')]);
 
-        // Decrement
+        // Decrement, when pressing -
         bindings.add("decrement", [Key::Char('-')], || Message::Decrement);
 
-        // Exit
-        bindings.add("exit", [Key::Ctrl('c')], |this: &Self| this.link.exit());
-        bindings.add("exit", [Key::Esc], |this: &Self| this.link.exit());
+        // Exit, when pressing Esc or Ctrl-c
+        bindings
+            .command("exit", |this: &Self| this.link.exit())
+            .with([Key::Ctrl('c')])
+            .with([Key::Esc]);
     }
 }
 
@@ -109,5 +120,6 @@ const STYLE: Style = Style::bold(BACKGROUND, FOREGROUND);
 
 fn main() -> Result<()> {
     env_logger::init();
-    zi_term::incremental()?.run_event_loop(Counter::with(()))
+    let counter = Counter::with(Properties { initial_count: 0 });
+    zi_term::incremental()?.run_event_loop(counter)
 }
