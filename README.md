@@ -20,6 +20,12 @@
 
 Zi is a Rust library for building modern terminal user interfaces in an incremental, declarative fashion.
 
+# Screenshots
+![Counter Example Screenshot](/screenshots/counter.png?raw=true "Counters")
+![Mandelbrot Example Screenshot](/screenshots/mandelbrot.png?raw=true "Mandelbrot")
+![Splash Example Screenshot](/screenshots/splash.png?raw=true "Splash")
+![Todo Example Screenshot](/screenshots/todo.png?raw=true "Todo")
+
 # License
 
 This project is licensed under either of
