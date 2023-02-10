@@ -15,7 +15,7 @@ use crate::{
     terminal::{Canvas, Event, Key, Position, Rect, Size},
 };
 
-pub trait MessageSender: Debug + Send + 'static {
+pub trait MessageSender: Debug + Send + Sync + 'static {
     fn send(&self, message: ComponentMessage);
 
     fn clone_box(&self) -> Box<dyn MessageSender>;
@@ -94,7 +94,7 @@ impl App {
     /// };
     ///
     /// #[derive(Clone, Debug)]
-    /// struct MessageQueue(mpsc::Sender<ComponentMessage>);
+    /// struct MessageQueue(mpsc::SyncSender<ComponentMessage>);
     ///
     /// impl MessageSender for MessageQueue {
     ///     fn send(&self, message: ComponentMessage) {
@@ -107,7 +107,7 @@ impl App {
     /// }
     ///
     /// # fn main() {
-    /// let (sender, receiver) = mpsc::channel();
+    /// let (sender, receiver) = mpsc::sync_channel(100);
     /// let message_queue = MessageQueue(sender);
     /// let mut app = App::new(
     ///     message_queue,
@@ -642,7 +642,7 @@ mod tests {
     };
 
     #[derive(Clone, Debug)]
-    struct MessageQueue(mpsc::Sender<ComponentMessage>);
+    struct MessageQueue(mpsc::SyncSender<ComponentMessage>);
 
     impl MessageSender for MessageQueue {
         fn send(&self, message: ComponentMessage) {
@@ -655,14 +655,14 @@ mod tests {
     }
 
     impl MessageQueue {
-        fn new(sender: mpsc::Sender<ComponentMessage>) -> Self {
+        fn new(sender: mpsc::SyncSender<ComponentMessage>) -> Self {
             Self(sender)
         }
     }
 
     #[test]
     fn trivial_message_queue() {
-        let (sender, _receiver) = mpsc::channel();
+        let (sender, _receiver) = mpsc::sync_channel(100);
         let message_queue = MessageQueue::new(sender);
 
         let mut app = App::new(
