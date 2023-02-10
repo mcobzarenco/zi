@@ -15,7 +15,7 @@ use crate::{
     terminal::{Canvas, Event, Key, Position, Rect, Size},
 };
 
-pub trait MessageSender: Debug + Send + 'static {
+pub trait MessageSender: Debug + Send + Sync + 'static {
     fn send(&self, message: ComponentMessage);
 
     fn clone_box(&self) -> Box<dyn MessageSender>;
